@@ -1,0 +1,39 @@
+# Render Blueprint: one always-on web service (API + dashboard + scheduler) and a Postgres database.
+# The scheduler runs inside the web service, so it MUST be a paid, always-on instance:
+# free instances spin down when idle and the 42-day schedule would not run.
+services:
+  - type: web
+    name: bilan-knowledge
+    runtime: docker
+    dockerContext: ./bilan-knowledge
+    dockerfilePath: ./bilan-knowledge/Dockerfile
+    buildFilter:
+      paths: ["bilan-knowledge/**"]
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bilan-knowledge-db
+          property: connectionString
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PROCESS_ROLE
+        value: all
+      - key: KB_AUTO_INITIAL
+        value: "true"
+      - key: REFRESH_INTERVAL_DAYS
+        value: "42"
+      - key: MAX_USD_PER_REFRESH
+        value: "20"
+      - key: MAX_USD_PER_MONTH
+        value: "50"
+      - key: MAX_USD_PER_QUESTION
+        value: "1"
+
+databases:
+  - name: bilan-knowledge-db
+    plan: basic-256mb
