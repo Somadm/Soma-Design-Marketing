@@ -3,9 +3,10 @@ import { loadConfig } from "./config.js";
 import { migrate } from "./db/migrate.js";
 import { createPool } from "./db/pool.js";
 import { buildServer } from "./http/server.js";
-import { seedSources } from "./knowledge/store.js";
+import { seedSources } from "./kb/store.js";
 import { ClaudeResearchModel } from "./research/claude.js";
-import { startScheduler, type SchedulerHandle } from "./refresh/schedule.js";
+import { VoyageEmbedder } from "./research/embeddings.js";
+import { startWorker, type WorkerHandle } from "./refresh/worker.js";
 
 async function main() {
   const cfg = loadConfig();
@@ -15,27 +16,23 @@ async function main() {
   await seedSources(db);
 
   const model = cfg.ANTHROPIC_API_KEY ? new ClaudeResearchModel(cfg) : null;
-  if (!model) console.warn("ANTHROPIC_API_KEY is not set: research and refreshes are disabled until it is configured.");
+  if (!model) console.warn("ANTHROPIC_API_KEY is not set: research is disabled until it is configured.");
+  const embedder = cfg.VOYAGE_API_KEY ? new VoyageEmbedder(cfg) : null;
+  const deployed = cfg.DEPLOYMENT_ENV === "production";
 
-  const workerId = `${hostname()}:${process.pid}`;
-  let scheduler: SchedulerHandle | null = null;
+  let worker: WorkerHandle | null = null;
   if (cfg.PROCESS_ROLE !== "web") {
-    scheduler = startScheduler({ db, cfg, model, workerId });
-    console.log(`Scheduler started (${workerId}), tick every ${cfg.SCHEDULER_TICK_SECONDS}s`);
+    worker = startWorker({ db, cfg, model, embedder, workerId: `${hostname()}:${process.pid}`, deployed });
+    console.log(`Worker started (${deployed ? "production" : cfg.DEPLOYMENT_ENV}); kb_tick every ${cfg.TICK_MINUTES} min`);
   }
-
-  let app: Awaited<ReturnType<typeof buildServer>> | null = null;
-  if (cfg.PROCESS_ROLE !== "worker") {
-    app = await buildServer({ db, cfg, model, wakeScheduler: scheduler?.wake });
-    await app.listen({ port: cfg.PORT, host: cfg.HOST });
-  }
+  const app = cfg.PROCESS_ROLE !== "worker" ? await buildServer({ db, cfg, model, embedder, wakeWorker: worker?.wake }) : null;
+  if (app) await app.listen({ port: cfg.PORT, host: cfg.HOST });
 
   const shutdown = async (signal: string) => {
     console.log(`${signal} received, shutting down`);
     await app?.close();
-    // Let an in-flight tick finish its current step; a refresh interrupted here is
-    // recovered by stale-run detection on the next start.
-    await Promise.race([scheduler?.stop(), new Promise((r) => setTimeout(r, 20_000))]);
+    // An interrupted refresh is recovered by kb_tick's stuck-run rule and retried.
+    await Promise.race([worker?.stop(), new Promise((r) => setTimeout(r, 20_000))]);
     await db.end();
     process.exit(0);
   };

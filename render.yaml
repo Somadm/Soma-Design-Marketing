@@ -1,6 +1,7 @@
-# Render Blueprint: one always-on web service (API + dashboard + scheduler) and a Postgres database.
-# The scheduler runs inside the web service, so it MUST be a paid, always-on instance:
-# free instances spin down when idle and the 42-day schedule would not run.
+# Render Blueprint: one always-on service (API + UI + worker) and Postgres.
+# The worker must run 24/7: free/sleeping instances would stop the 42-day schedule.
+# Postgres can instead be Supabase Pro (pg_cron + pgvector): set DATABASE_URL to it
+# and remove the database block. See bilan-knowledge/README.md.
 services:
   - type: web
     name: bilan-knowledge
@@ -19,20 +20,20 @@ services:
           property: connectionString
       - key: ADMIN_TOKEN
         generateValue: true
+      - key: DEPLOYMENT_ENV
+        value: production
       - key: ANTHROPIC_API_KEY
         sync: false
-      - key: PROCESS_ROLE
-        value: all
-      - key: KB_AUTO_INITIAL
-        value: "true"
-      - key: REFRESH_INTERVAL_DAYS
-        value: "42"
-      - key: MAX_USD_PER_REFRESH
-        value: "20"
-      - key: MAX_USD_PER_MONTH
-        value: "50"
-      - key: MAX_USD_PER_QUESTION
-        value: "1"
+      - key: VOYAGE_API_KEY
+        sync: false
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: ALERT_FROM_EMAIL
+        sync: false
+      - key: APP_URL
+        sync: false
 
 databases:
   - name: bilan-knowledge-db

@@ -4,62 +4,51 @@ const bool = z
   .enum(["true", "false", "1", "0", "yes", "no"])
   .transform((v) => v === "true" || v === "1" || v === "yes");
 
-const numList = z
-  .string()
-  .transform((s) => s.split(",").map((x) => Number(x.trim())).filter((n) => Number.isFinite(n) && n > 0));
-
+/**
+ * Infrastructure and secrets come from the environment. Operational settings that
+ * Sabah can change (run window, retries, budgets, alert email, campaign profile)
+ * live in the `settings` table and are edited in the Settings tab.
+ */
 const EnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
   ADMIN_TOKEN: z.string().min(16, "ADMIN_TOKEN must be at least 16 characters"),
-  ANTHROPIC_API_KEY: z.string().optional(),
   PORT: z.coerce.number().default(8080),
   HOST: z.string().default("0.0.0.0"),
-
-  /** "all" runs API + scheduler in one process; "web" or "worker" split them. */
+  /** "all" runs API + worker in one process; or run "web" and "worker" separately. */
   PROCESS_ROLE: z.enum(["all", "web", "worker"]).default("all"),
+  /** Set to "production" on the deployed backend. Only a production worker can mark the schedule as verified. */
+  DEPLOYMENT_ENV: z.string().default("development"),
 
-  /** Run the initial research automatically when no successful refresh exists yet. */
-  KB_AUTO_INITIAL: bool.default(true),
-  /** Master switch for the automatic schedule. */
-  KB_SCHEDULE_ENABLED: bool.default(true),
-  REFRESH_INTERVAL_DAYS: z.coerce.number().positive().default(42),
-  SCHEDULER_TICK_SECONDS: z.coerce.number().min(10).default(300),
-  /** A running refresh whose heartbeat is older than this is treated as crashed. */
-  RUN_STALE_MINUTES: z.coerce.number().positive().default(20),
-  /** Delays between automatic retries after a failed/incomplete refresh. Length bounds the retry count. */
-  REFRESH_RETRY_DELAYS_HOURS: numList.default([1, 6, 24]),
-
-  /** Per-page fetch retries for temporary failures (timeouts, 429, 5xx). */
-  FETCH_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(6).default(3),
-  FETCH_TIMEOUT_MS: z.coerce.number().default(30000),
-  FETCH_BACKOFF_BASE_MS: z.coerce.number().default(2000),
-  /** Consecutive "not found" results before a source is treated as discontinued. */
-  DISCONTINUE_AFTER_MISSES: z.coerce.number().int().min(1).default(2),
-  /** Pages larger than this are flagged as failed rather than silently truncated. */
-  MAX_PAGE_CHARS: z.coerce.number().default(150000),
-  MIN_PAGE_CHARS: z.coerce.number().default(400),
-  /** Use Claude's web_fetch tool when a direct fetch is blocked (bot walls, JS-only pages). */
+  // Research service (Claude API: extraction, comparison, discovery, briefing).
+  ANTHROPIC_API_KEY: z.string().optional(),
+  RESEARCH_MODEL: z.string().default("claude-sonnet-5-5"),
+  RESEARCH_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
+  BRIEFING_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
+  MAX_DISCOVERY_SEARCHES_PER_PLATFORM: z.coerce.number().int().nonnegative().default(15),
+  MAX_NEW_SOURCES_PER_REFRESH: z.coerce.number().int().nonnegative().default(20),
+  /** Use Claude's web_fetch tool as a last resort when direct and rendered fetches fail. */
   USE_CLAUDE_WEB_FETCH_FALLBACK: bool.default(true),
 
-  RESEARCH_MODEL: z.string().default("claude-opus-5-5"),
-  RESEARCH_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
-  BRIEFING_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("high"),
+  // Optional services.
+  VOYAGE_API_KEY: z.string().optional(),
+  EMBEDDING_MODEL: z.string().default("voyage-4-lite"),
+  FIRECRAWL_API_KEY: z.string().optional(),
+  FIRECRAWL_API_URL: z.string().default("https://api.firecrawl.dev/v2/scrape"),
+  RESEND_API_KEY: z.string().optional(),
+  ALERT_FROM_EMAIL: z.string().default("Bilan <alerts@example.com>"),
+  APP_URL: z.string().default(""),
 
-  /** Spending limits (USD, at Anthropic list prices). */
-  MAX_USD_PER_REFRESH: z.coerce.number().nonnegative().default(20),
-  MAX_USD_PER_MONTH: z.coerce.number().nonnegative().default(50),
-  MAX_USD_PER_QUESTION: z.coerce.number().nonnegative().default(1),
-  MAX_SOURCES_PER_REFRESH: z.coerce.number().int().positive().default(150),
-  MAX_DISCOVERY_SEARCHES_PER_PLATFORM: z.coerce.number().int().nonnegative().default(8),
-  MAX_NEW_SOURCES_PER_REFRESH: z.coerce.number().int().nonnegative().default(40),
-
-  /** Between refreshes: re-verify a cited source live if it was last verified longer ago than this. */
-  LIVE_CHECK_FRESH_HOURS: z.coerce.number().nonnegative().default(24),
-  LIVE_CHECK_MAX_SOURCES: z.coerce.number().int().nonnegative().default(3),
-
-  USER_AGENT: z
-    .string()
-    .default("BilanKnowledgeBot/0.1 (+advertising policy monitor for Creative Academy)"),
+  // Worker.
+  WORKER_POLL_SECONDS: z.coerce.number().min(1).default(20),
+  TICK_MINUTES: z.coerce.number().min(1).default(15),
+  FETCH_TIMEOUT_MS: z.coerce.number().default(30000),
+  MIN_PAGE_CHARS: z.coerce.number().default(300),
+  MAX_PAGE_CHARS: z.coerce.number().default(200000),
+  /** Multiplier for retry backoff (settings.backoff_minutes). Tests use a tiny value. */
+  BACKOFF_SCALE: z.coerce.number().positive().default(1),
+  /** Per-question cap for /api/ask answer generation (live checks use the monthly live-check budget). */
+  MAX_USD_PER_ANSWER: z.coerce.number().nonnegative().default(0.5),
+  USER_AGENT: z.string().default("BilanKnowledgeBot/1.0 (+official advertising guidance monitor for Creative Academy)"),
 });
 
 export type Config = z.infer<typeof EnvSchema>;
@@ -73,7 +62,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return parsed.data;
 }
 
-/** Config for tests / scripts that want defaults with a few overrides. */
 export function testConfig(overrides: Partial<Record<keyof Config, string>> = {}): Config {
   return loadConfig({
     DATABASE_URL: "postgres://unused",

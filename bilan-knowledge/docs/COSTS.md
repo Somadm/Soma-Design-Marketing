@@ -1,67 +1,61 @@
 # Costs
 
-Three things cost money: **hosting**, **the research service** and **API usage**. The research
-service *is* the Claude API: Claude's web search and web fetch tools plus the model. There's no
-separate search subscription. All prices below are list prices at the time of writing; check the
-providers' pricing pages before you commit.
+Prices were checked on 30 Sep 2026 (from the design handoff §7 and Anthropic's list prices).
+Re-check them before deploying. This excludes the cost of building the system.
 
-## 1. Hosting (fixed)
+## Unit prices
 
-| Item | Why it's needed | Typical price |
+| Service | What it's for | Price |
 |---|---|---|
-| Always-on web service (e.g. Render *Starter*) | Runs the API, dashboard and the scheduler 24/7 | ~$7/month |
-| Managed Postgres (e.g. Render *Basic 256 MB*) | Persistent knowledge base, versions, runs, logs | ~$6–7/month |
-| **Total** | | **~$13–15/month** |
+| Claude Sonnet 5.5 (`RESEARCH_MODEL`) | Extraction, comparison, briefing, answers | $2 per million input tokens, $10 per million output tokens |
+| Claude web search | Discovery of new/moved pages on official domains | $10 per 1,000 searches + tokens |
+| Claude web fetch | Fallback retrieval for blocked pages | Tokens only |
+| Voyage `voyage-4-lite` (optional) | Hybrid search embeddings | $0.02 per million tokens; first 200M tokens free |
+| Firecrawl (optional) | Rendered fetch of JavaScript-rendered pages | Free tier 1,000 credits/month; Hobby $19/month for 5,000 |
+| Resend (optional) | Alert emails | Free tier covers this volume |
 
-Free or auto-sleeping instances aren't suitable: the scheduler would stop when the instance
-sleeps. Storage is small. Page versions are text, typically well under 1 GB for years of history.
+## Hosting (pick one)
 
-## 2. Research service and model usage (variable)
+| Option | Monthly |
+|---|---|
+| A. Render Starter web service (~$7) + Render Postgres Basic (~$6–7) | **~$13–15** |
+| B. Supabase Pro ($25, includes pg_cron + pgvector) + small always-on container (~$5–7) | **~$30–32** |
 
-Claude API list prices used by the spending limits (`src/research/budget.ts`):
+Free or auto-sleeping plans aren't suitable. The worker must run 24/7, and free Supabase projects
+pause after 7 days without activity, which would silently stop a 42-day schedule.
 
-| | Input | Output |
+## Research cost per run
+
+Unchanged pages are hash-matched and never sent to Claude, which keeps refreshes cheap.
+
+| Item | Per 42-day refresh (~22–40 sources, ~10 changed) |
+|---|---|
+| Discovery: up to 15 searches per platform + result tokens | ~$0.90 |
+| Extraction and comparison of changed pages | ~$0.70 |
+| Briefing | ~$0.15 |
+| Embeddings | ~$0 (free allowance) |
+| Retries, web_fetch fallbacks, headroom | $0.25–$1.70 |
+| **Per refresh** | **~$2–$3.50** (default cap $5) |
+
+- **Initial research** (one-off, all pages extracted): **~$8–$12** (default cap $15).
+- **Live checks:** ~$0.02–$0.05 each; a check of an unchanged page costs nothing beyond hosting.
+  The default cap is $5/month.
+- **Chat answers via `/api/ask`:** ~$0.01–$0.05 each (capped per answer by `MAX_USD_PER_ANSWER`).
+
+## Monthly total
+
+| | Option A | Option B |
 |---|---|---|
-| Claude Opus 5.5 (default `RESEARCH_MODEL`) | $4 / million tokens | $20 / million tokens |
-| Claude Sonnet 5.5 (optional, cheaper) | $2 / million tokens | $10 / million tokens |
-| Web search | $10 per 1,000 searches | |
-| Web fetch | no per-fetch fee; fetched content is billed as input tokens | |
+| Hosting | $13–15 | $30–32 |
+| Research (refresh amortised ≈ $2 + live checks $0–5) | $2–7 | $2–7 |
+| Firecrawl (only if needed) | $0–19 | $0–19 |
+| **Total** | **~$15–41** | **~$32–58** |
 
-What each operation costs with the default model (estimates):
+## Limits (Settings tab)
 
-| Operation | When | Estimate |
-|---|---|---|
-| Direct fetch + hash compare of an unchanged page | Every refresh, every page | $0 |
-| Page fetched via Claude web_fetch (blocked for bots) | Every refresh, for blocked pages | ~$0.03–0.08 per page |
-| Analysis of a new or changed page | Only when content changed | ~$0.08–0.25 per page |
-| Discovery (up to 8 searches per platform) | Every refresh | ~$1–2 |
-| Briefing | Every refresh with changes | ~$0.05–0.15 |
-| **Initial research** (~50 pages) | Once | **~$8–15** |
-| **42-day refresh** (~20–40% of pages changed) | Every 42 days | **~$3–8** |
-| Question with live check | Per question | ~$0.05–0.35 |
+Every paid call is estimated at its worst case before it runs and written to `budget_ledger`
+after. When a limit is reached:
+- **"Stop and mark incomplete":** the call is refused.
+- **"Finish current source, then stop":** sources already in progress finish, then the run stops.
 
-Monthly API spend: about **$3–6** for the schedule, plus **$5–35 per 100 questions**, depending
-on how often live checks find changes.
-
-**Typical total: ~$20–50/month**, dominated by how much Bilan is asked.
-
-## 3. Limits you control
-
-Every paid call is estimated (worst case, with full output) *before* it runs, and refused if it
-would exceed a limit. A refresh that hits a limit stops, is marked **incomplete** with the
-reason, and keeps the last verified knowledge.
-
-| Setting | Default | Meaning |
-|---|---|---|
-| `MAX_USD_PER_REFRESH` | 20 | Cap per refresh (initial research fits comfortably) |
-| `MAX_USD_PER_MONTH` | 50 | Cap across refreshes and questions per calendar month |
-| `MAX_USD_PER_QUESTION` | 1 | Cap per question, including its live checks |
-| `MAX_SOURCES_PER_REFRESH` | 150 | Pages checked per refresh |
-| `MAX_DISCOVERY_SEARCHES_PER_PLATFORM` | 8 | Web searches per platform per refresh |
-| `MAX_NEW_SOURCES_PER_REFRESH` | 40 | New pages added per refresh |
-| `LIVE_CHECK_MAX_SOURCES` | 3 | Sources re-verified per question |
-| `LIVE_CHECK_FRESH_HOURS` | 24 | Skip live re-check if verified this recently |
-| `RESEARCH_MODEL` | `claude-opus-5-5` | `claude-sonnet-5-5` roughly halves model costs, at some cost to extraction quality |
-
-Actual spend per call is recorded in `spend_ledger` and shown in the dashboard (per refresh and
-month to date).
+Either way the run is `incomplete (budget_limit)` and no current guidance is replaced.

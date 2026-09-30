@@ -3,88 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bilan Knowledge Updates</title>
+  <title>Bilan · Knowledge updates</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="top">
-    <div>
-      <h1>Bilan · Advertising knowledge</h1>
-      <p class="sub">Meta &amp; TikTok official guidance, refreshed every <span id="interval">42</span> days</p>
-    </div>
-    <div class="top-actions">
-      <button id="update-now" class="primary" disabled>Update now</button>
-      <button id="sign-out" class="ghost" hidden>Sign out</button>
-    </div>
-  </header>
-
-  <section id="login" class="panel" hidden>
-    <h2>Sign in</h2>
-    <p>Enter the dashboard access token (<code>ADMIN_TOKEN</code>).</p>
-    <form id="login-form" class="row">
-      <input id="token" type="password" autocomplete="current-password" placeholder="Access token" required />
-      <button class="primary" type="submit">Continue</button>
-    </form>
-    <p id="login-error" class="error" hidden></p>
-  </section>
-
-  <main id="app" hidden>
-    <div id="banners"></div>
-
-    <section class="cards">
-      <article class="card"><h3>Last successful refresh</h3><p id="last-success" class="big">–</p><p id="last-success-sub" class="muted"></p></article>
-      <article class="card"><h3>Next scheduled refresh</h3><p id="next-refresh" class="big">–</p><p id="next-refresh-sub" class="muted"></p></article>
-      <article class="card"><h3>Latest refresh</h3><p id="latest-run" class="big">–</p><p id="latest-run-sub" class="muted"></p></article>
-      <article class="card"><h3>Research spend this month</h3><p id="spend" class="big">–</p><p id="spend-sub" class="muted"></p></article>
-    </section>
-
-    <nav class="tabs" role="tablist">
-      <button role="tab" data-tab="history" aria-selected="true">Update history</button>
-      <button role="tab" data-tab="briefings">Briefings</button>
-      <button role="tab" data-tab="sources">Sources</button>
-      <button role="tab" data-tab="ask">Ask Bilan</button>
-      <button role="tab" data-tab="settings">Settings</button>
-    </nav>
-
-    <section id="tab-history" class="tab">
-      <div class="table-wrap"><table id="runs"><thead><tr>
-        <th>#</th><th>Type</th><th>Status</th><th>Started</th><th>Duration</th><th>Checked</th><th>Changed</th><th>New</th><th>Removed</th><th>Failed</th><th>Spend</th>
-      </tr></thead><tbody></tbody></table></div>
-      <div id="run-detail" class="panel" hidden></div>
-    </section>
-
-    <section id="tab-briefings" class="tab" hidden><div id="briefings"></div></section>
-
-    <section id="tab-sources" class="tab" hidden>
-      <form id="add-source" class="row">
-        <input id="source-url" type="url" placeholder="https://ads.tiktok.com/help/article/…" required />
-        <button type="submit">Add official page</button>
-      </form>
-      <div id="sources"></div>
-    </section>
-
-    <section id="tab-ask" class="tab" hidden>
-      <form id="ask-form" class="stack">
-        <textarea id="question" rows="3" placeholder="e.g. What are TikTok's rules for advertising paid courses in the UK?" required></textarea>
-        <div class="row">
-          <select id="ask-platform"><option value="">Detect platform</option><option value="meta">Meta</option><option value="tiktok">TikTok</option></select>
-          <button class="primary" type="submit">Ask</button>
-        </div>
-      </form>
-      <div id="answer"></div>
-    </section>
-
-    <section id="tab-settings" class="tab" hidden>
-      <div class="panel">
-        <h2>Creative Academy campaign profile</h2>
-        <p class="muted">Used to decide which changes matter and to write the “What it means for us” briefing.</p>
-        <textarea id="profile" rows="10"></textarea>
-        <div class="row"><button id="save-profile" class="primary">Save profile</button><span id="profile-status" class="muted"></span></div>
-      </div>
-      <div class="panel"><h2>Limits</h2><dl id="limits" class="kv"></dl></div>
-    </section>
-  </main>
-
+  <div id="root"></div>
   <script src="app.js"></script>
 </body>
 </html>

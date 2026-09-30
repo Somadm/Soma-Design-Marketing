@@ -3,3 +3,5 @@ dist/
 .env
 *.log
 .demo/
+public/app.js
+public/app.js.map

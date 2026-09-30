@@ -8,11 +8,13 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run build:server && npm run build:ui",
+    "build:server": "tsc -p tsconfig.json",
+    "build:ui": "esbuild ui/main.tsx --bundle --minify --sourcemap --jsx=automatic --target=es2020 --outfile=public/app.js",
     "start": "node dist/src/main.js",
-    "dev": "tsx watch src/main.ts",
+    "dev": "npm run build:ui && tsx watch src/main.ts",
     "migrate": "node dist/src/db/migrate.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.ui.json --noEmit",
     "test": "vitest run",
     "smoke": "node dist/src/tools/smoke.js"
   },
@@ -27,6 +29,11 @@
   "devDependencies": {
     "@types/node": "^26.6.3",
     "@types/pg": "^8.23.1",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "esbuild": "^0.28.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.2"

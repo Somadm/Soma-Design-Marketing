@@ -1,53 +1,48 @@
 import type { DbClient } from "../db/pool.js";
 
-export type RunTrigger = "initial" | "scheduled" | "retry" | "manual" | "live_check";
-export type RunStatus = "queued" | "running" | "succeeded" | "incomplete" | "failed";
+export type Trigger = "initial" | "scheduled" | "manual" | "retry" | "live_check";
+export type RunStatus = "queued" | "running" | "complete" | "incomplete" | "failed" | "cancelled";
 
 export interface RunRow {
   id: number;
-  trigger: RunTrigger;
+  code: string;
+  trigger: Trigger;
   status: RunStatus;
   requested_by: string | null;
+  question: string | null;
   created_at: Date;
   started_at: Date | null;
   finished_at: Date | null;
-  heartbeat_at: Date | null;
+  budget_usd: number;
+  spend_usd: number;
   error: string | null;
 }
 
-export type EnqueueResult = { created: true; run: RunRow } | { created: false; run: RunRow };
+export const TRIGGER_LABEL: Record<Trigger, string> = {
+  initial: "Initial research",
+  scheduled: "Scheduled refresh",
+  manual: "Manual refresh",
+  retry: "Retry refresh",
+  live_check: "Live check",
+};
 
-/**
- * Queues a full refresh. The partial unique index refresh_runs_one_active makes
- * this safe against duplicates across processes: a second enqueue while one is
- * queued/running returns the existing run instead.
- */
-export async function enqueueRun(db: DbClient, trigger: Exclude<RunTrigger, "live_check">, requestedBy: string): Promise<EnqueueResult> {
-  try {
-    const { rows } = await db.query<RunRow>(
-      "INSERT INTO refresh_runs (trigger, status, requested_by) VALUES ($1, 'queued', $2) RETURNING *",
-      [trigger, requestedBy],
-    );
-    return { created: true, run: rows[0] };
-  } catch (err) {
-    if ((err as { code?: string }).code !== "23505") throw err;
-    const active = await activeRun(db);
-    if (!active) throw new Error("refresh already active but could not be loaded");
-    return { created: false, run: active };
-  }
-}
-
-export async function activeRun(db: DbClient): Promise<RunRow | null> {
-  const { rows } = await db.query<RunRow>(
-    "SELECT * FROM refresh_runs WHERE status IN ('queued','running') AND trigger <> 'live_check' ORDER BY id LIMIT 1",
+/** "Update now" and the scheduler both go through kb_enqueue(), which prevents duplicates. */
+export async function enqueue(db: DbClient, trigger: "manual" | "scheduled" | "retry" | "initial", requestedBy: string) {
+  const { rows } = await db.query<{ run_id: number; run_code: string; created: boolean }>(
+    "SELECT * FROM kb_enqueue($1, $2)",
+    [trigger, requestedBy],
   );
-  return rows[0] ?? null;
+  return rows[0];
 }
 
-/** Atomically claims the oldest queued run for this worker. */
+export async function tick(db: DbClient, now?: Date): Promise<string> {
+  const { rows } = await db.query<{ kb_tick: string }>(now ? "SELECT kb_tick($1)" : "SELECT kb_tick()", now ? [now] : []);
+  return rows[0].kb_tick;
+}
+
 export async function claimNextRun(db: DbClient, workerId: string): Promise<RunRow | null> {
   const { rows } = await db.query<RunRow>(
-    `UPDATE refresh_runs SET status = 'running', started_at = now(), heartbeat_at = now(), worker_id = $1
+    `UPDATE refresh_runs SET status = 'running', started_at = now(), last_activity_at = now(), worker_id = $1, stage = 'lock'
      WHERE id = (SELECT id FROM refresh_runs WHERE status = 'queued' AND trigger <> 'live_check'
                  ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
      RETURNING *`,
@@ -56,27 +51,16 @@ export async function claimNextRun(db: DbClient, workerId: string): Promise<RunR
   return rows[0] ?? null;
 }
 
-export async function heartbeat(db: DbClient, runId: number): Promise<void> {
-  await db.query("UPDATE refresh_runs SET heartbeat_at = now() WHERE id = $1 AND status = 'running'", [runId]);
+export async function createLiveCheckRun(db: DbClient, budgetUsd: number, question: string | null, requestedBy: string): Promise<RunRow> {
+  const { rows } = await db.query<RunRow>(
+    `INSERT INTO refresh_runs (code, trigger, status, requested_by, question, budget_usd, started_at, last_activity_at, stage, sources_total)
+     VALUES ('LC-' || lpad(nextval('live_check_code_seq')::text, 3, '0'), 'live_check', 'running', $1, $2, $3, now(), now(), 'live', 1)
+     RETURNING *`,
+    [requestedBy, question, budgetUsd],
+  );
+  return rows[0];
 }
 
-/** Marks runs whose worker died (no heartbeat) as failed so the schedule can continue. */
-export async function reapStaleRuns(db: DbClient, staleMinutes: number): Promise<number[]> {
-  const { rows } = await db.query<{ id: number }>(
-    `UPDATE refresh_runs SET status = 'failed', finished_at = now(),
-       error = 'worker stopped responding (no heartbeat for ' || $1::text || ' minutes); last verified knowledge retained'
-     WHERE status = 'running' AND heartbeat_at < now() - make_interval(mins => $1::int)
-     RETURNING id::int`,
-    [staleMinutes],
-  );
-  return rows.map((r) => r.id);
-}
-
-export async function createLiveCheckRun(db: DbClient, requestedBy: string): Promise<number> {
-  const { rows } = await db.query<{ id: number }>(
-    `INSERT INTO refresh_runs (trigger, status, requested_by, started_at, heartbeat_at)
-     VALUES ('live_check', 'running', $1, now(), now()) RETURNING id::int`,
-    [requestedBy],
-  );
-  return rows[0].id;
+export async function setStage(db: DbClient, runId: number, stage: string): Promise<void> {
+  await db.query("UPDATE refresh_runs SET stage = $2, last_activity_at = now() WHERE id = $1", [runId, stage]);
 }

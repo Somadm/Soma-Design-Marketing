@@ -1,67 +1,57 @@
 import { z } from "zod";
 import type { Budget } from "./budget.js";
 import type { PageLink } from "./fetcher.js";
-import type { Platform, SourceCategory } from "./sources.js";
+import type { Platform, SourceType } from "./sources.js";
 
-export const AnalyzedItemSchema = z.strictObject({
-  previous_item_id: z.number().nullable().describe("id of the stored item this corresponds to, or null if new"),
-  change: z.enum(["new", "changed", "unchanged"]),
-  topic: z.string().describe("short topic label, e.g. 'education ads', 'lead forms', 'pixel setup'"),
-  title: z.string(),
-  guidance: z.string().describe("the guidance itself, faithful to the source, 1-6 sentences"),
-  regions: z.array(z.string()).describe("regions/countries it applies to or is limited to; empty if global/unspecified"),
-  account_scope: z.string().nullable().describe("account-specific limits (e.g. 'only some advertisers', 'business verification required')"),
-  rollout_status: z.string().nullable().describe("e.g. 'beta', 'gradual rollout', 'generally available', 'deprecated from v22'"),
-  limitations: z.string().nullable().describe("any other caveats the source states"),
-  effective_date: z.string().nullable().describe("date the guidance takes/took effect if the source states one"),
+export const CATEGORIES = ["policy", "feature_availability", "setup_steps", "specifications", "measurement", "announcement", "other"] as const;
+export type Category = (typeof CATEGORIES)[number];
+/** Categories whose guidance changes often enough that Bilan re-verifies them live before answering. */
+export const CHANGEABLE: Category[] = ["policy", "feature_availability", "setup_steps"];
+
+export const LimitationSchema = z.strictObject({
+  kind: z.enum(["region", "account", "rollout", "placement", "other"]),
+  text: z.string(),
 });
+export type Limitation = z.infer<typeof LimitationSchema>;
 
-export const SourceAnalysisSchema = z.strictObject({
-  relevant: z.boolean().describe("false if the page contains no advertising guidance for this platform"),
-  material_change: z.boolean().describe("true if the guidance differs in substance from the stored items"),
-  page_summary: z.string(),
-  items: z.array(AnalyzedItemSchema).describe("ALL guidance on the page as it stands now, including unchanged items"),
-  discontinued: z
-    .array(z.strictObject({ previous_item_id: z.number(), reason: z.string() }))
-    .describe("stored items that are no longer current (removed from page, or the page says they are discontinued/replaced)"),
-  changes: z
-    .array(
-      z.strictObject({
-        kind: z.enum(["new", "changed", "discontinued"]),
-        title: z.string(),
-        summary: z.string(),
-        relevance: z.enum(["high", "medium", "low", "none"]).describe("relevance to the advertiser_context campaigns"),
-        relevance_note: z.string().describe("one sentence: why it matters (or not) for the advertiser's campaigns"),
-      }),
-    )
-    .describe("human-readable list of substantive changes versus the stored items; empty if none"),
-  follow_links: z
-    .array(z.string())
-    .describe("URLs from the provided link list that are specific official guidance pages worth indexing (max 15)"),
+export const ExtractionSchema = z.strictObject({
+  relevant_page: z.boolean().describe("false if the page has no advertising guidance for this platform (e.g. an index page)"),
+  page_change: z.enum(["none", "cosmetic", "substantive"]).describe("versus the stored entries; 'cosmetic' = wording/layout only"),
+  entries: z.array(
+    z.strictObject({
+      slug: z.string().describe("kebab-case id; reuse the stored slug for the same guidance"),
+      title: z.string(),
+      category: z.enum(CATEGORIES),
+      summary: z.string().describe("1-2 sentences"),
+      body: z.string().describe("the guidance, faithful to the source, 2-8 sentences"),
+      limitations: z.array(LimitationSchema).describe("regional, account-specific, rollout and placement limits the source states"),
+      relevance: z.string().describe("For Creative Academy: one or two sentences on what this means for its campaigns"),
+      classification: z.enum(["new", "changed", "unchanged", "cosmetic"]),
+      what_changed: z.string().nullable().describe("for changed entries: one sentence on what changed"),
+    }),
+  ),
+  removed: z.array(z.strictObject({ slug: z.string(), reason: z.string() })).describe("stored entries no longer supported by the page"),
+  follow_links: z.array(z.string()).describe("URLs from links_on_page that are specific official guidance pages worth indexing (max 10)"),
 });
+export type Extraction = z.infer<typeof ExtractionSchema>;
 
-export type AnalyzedItem = z.infer<typeof AnalyzedItemSchema>;
-export type SourceAnalysis = z.infer<typeof SourceAnalysisSchema>;
-
-export interface StoredItem {
-  id: number;
-  topic: string;
+export interface StoredEntry {
+  slug: string;
   title: string;
-  guidance: string;
-  regions: string[];
-  account_scope: string | null;
-  rollout_status: string | null;
-  limitations: string | null;
-  effective_date: string | null;
+  category: string;
+  summary: string;
+  body: string;
+  limitations: Limitation[];
 }
 
-export interface AnalyzeInput {
+export interface ExtractInput {
   platform: Platform;
   url: string;
-  title: string | null;
+  title: string;
+  sourceType: SourceType;
   pageText: string;
   links: PageLink[];
-  previousItems: StoredItem[];
+  stored: StoredEntry[];
   campaignProfile: string;
 }
 
@@ -70,47 +60,64 @@ export const DiscoveredSchema = z.strictObject({
     z.strictObject({
       url: z.string(),
       title: z.string(),
-      category: z.enum(["policy", "help", "api", "announcement", "other"]),
-      why: z.string(),
+      source_type: z.enum(["policy", "help_centre", "api_docs", "announcements"]),
     }),
   ),
 });
+export type DiscoveredPage = z.infer<typeof DiscoveredSchema>["pages"][number];
 
-export interface DiscoveredPage {
-  url: string;
-  title: string;
-  category: SourceCategory;
-}
-
-export interface BriefingChange {
+export interface BriefingChangeInput {
+  ref: string;
   platform: Platform;
-  kind: "new" | "changed" | "discontinued";
+  kind: "New" | "Changed" | "Archived";
   title: string;
+  what_changed: string | null;
   summary: string;
-  relevance: "high" | "medium" | "low" | "none";
-  relevance_note: string | null;
-  sourceUrl: string | null;
+  relevance: string | null;
+  limitations: Limitation[];
+  source_url: string;
 }
+
+export const BriefingSchema = z.strictObject({
+  summary: z.string().describe("1-2 sentences: counts of changed/new/discontinued and which matter for current creative"),
+  sections: z.array(
+    z.strictObject({
+      platform: z.enum(["meta", "tiktok"]),
+      items: z.array(
+        z.strictObject({
+          ref: z.string(),
+          kind: z.enum(["New", "Changed", "Archived"]),
+          title: z.string(),
+          what: z.string().describe("what changed, one sentence"),
+          means: z.string().describe("what it means for Creative Academy, one sentence"),
+          scope: z.string().nullable().describe("regional/account/rollout limitations, or null"),
+        }),
+      ),
+    }),
+  ),
+  recommendations: z.array(z.string()).describe("proposed actions for Sabah to approve; never publishing or spend changes"),
+});
+export type BriefingOutput = z.infer<typeof BriefingSchema>;
 
 export interface BriefingInput {
-  complete: boolean;
-  changes: BriefingChange[];
-  failedSources: { platform: Platform; url: string; error: string }[];
+  runCode: string;
+  sourcesVerified: number;
+  changes: BriefingChangeInput[];
   campaignProfile: string;
-  runDate: string;
 }
 
 export interface KnowledgeForAnswer {
   ref: string;
   platform: Platform;
   title: string;
-  guidance: string;
-  regions: string[];
-  account_scope: string | null;
-  rollout_status: string | null;
-  limitations: string | null;
+  summary: string;
+  body: string;
+  relevance: string | null;
+  limitations: Limitation[];
   source_url: string;
   verified_at: string;
+  version: number;
+  stale: boolean;
 }
 
 export interface AnswerInput {
@@ -119,28 +126,15 @@ export interface AnswerInput {
   knowledge: KnowledgeForAnswer[];
   liveCheckNotes: string[];
   campaignProfile: string;
-  allowWebSearch: boolean;
-}
-
-export interface AnswerOutput {
-  answer: string;
-  /** Official URLs found by web search during answering (candidates to save as sources). */
-  searchedUrls: { url: string; title: string; platform: Platform }[];
 }
 
 export type ClaudeFetchResult = { ok: true; text: string; finalUrl: string } | { ok: false; error: string };
 
-/** Everything that costs money or needs the network beyond plain HTTP goes through this interface. */
+/** Everything that costs money goes through this interface (a fake implements it in tests). */
 export interface ResearchModel {
-  analyzeSource(input: AnalyzeInput, budget: Budget): Promise<SourceAnalysis>;
-  discoverSources(
-    platform: Platform,
-    topics: string[],
-    knownUrls: string[],
-    maxSearches: number,
-    budget: Budget,
-  ): Promise<DiscoveredPage[]>;
+  extract(input: ExtractInput, budget: Budget): Promise<Extraction>;
+  discover(platform: Platform, topics: string[], knownUrls: string[], maxSearches: number, budget: Budget): Promise<DiscoveredPage[]>;
   fetchViaClaude(url: string, platform: Platform, budget: Budget): Promise<ClaudeFetchResult>;
-  writeBriefing(input: BriefingInput, budget: Budget): Promise<string>;
-  answer(input: AnswerInput, budget: Budget): Promise<AnswerOutput>;
+  brief(input: BriefingInput, budget: Budget): Promise<BriefingOutput>;
+  answer(input: AnswerInput, budget: Budget): Promise<string>;
 }

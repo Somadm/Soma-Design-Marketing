@@ -1,30 +1,32 @@
 import { createHash } from "node:crypto";
 import * as cheerio from "cheerio";
 
-export type FetchOutcome =
-  | { kind: "ok"; text: string; finalUrl: string; httpStatus: number; attempts: number; links: PageLink[] }
-  /** The publisher removed the page (404/410, or redirected to a generic landing page). */
-  | { kind: "missing"; httpStatus: number | null; finalUrl: string | null; attempts: number; reason: string }
-  /** We could not see the page. This is never treated as "unchanged". */
-  | { kind: "failed"; httpStatus: number | null; attempts: number; error: string; blocked: boolean };
-
 export interface PageLink {
   url: string;
   text: string;
 }
 
-export interface FetcherOptions {
-  maxAttempts: number;
+export type Via = "direct" | "rendered" | "claude_web_fetch";
+
+/** One retrieval attempt. Retries are scheduled by the caller (runner queue / live check). */
+export type FetchOutcome =
+  | { kind: "ok"; text: string; finalUrl: string; httpStatus: number; links: PageLink[]; via: Via }
+  /** 410, or a permanent redirect to a different article. */
+  | { kind: "discontinued"; httpStatus: number; reason: string; redirectTo: string | null }
+  /** Not verified. Never treated as "unchanged". */
+  | { kind: "failed"; httpStatus: number | null; reason: string; blocked: boolean };
+
+export interface FetchOptions {
   timeoutMs: number;
-  backoffBaseMs: number;
   userAgent: string;
   minChars: number;
   maxChars: number;
+  /** Length of the stored normalised text, for the "shrank below 40%" rule. */
+  previousLength?: number | null;
   fetchImpl?: typeof fetch;
-  sleep?: (ms: number) => Promise<void>;
 }
 
-const BLOCK_PATTERNS = [
+const BOT_MARKERS = [
   /you must log in to continue/i,
   /log in to (facebook|continue|see)/i,
   /please enable javascript/i,
@@ -35,10 +37,9 @@ const BLOCK_PATTERNS = [
   /unusual traffic/i,
   /captcha/i,
   /temporarily blocked/i,
+  /security check/i,
 ];
-
-/** Landing pages that a removed article typically redirects to. */
-const GENERIC_LANDING = /^\/(business\/help|help|business|docs|policies|en|en-us|portal\/docs)?\/?$/i;
+const LOGIN_PATH = /\/(login|checkpoint|auth|signin|sso)(\/|$|\.)/i;
 
 export function htmlToText(html: string, baseUrl?: string): { text: string; title: string | null; links: PageLink[] } {
   const $ = cheerio.load(html);
@@ -65,16 +66,18 @@ export function htmlToText(html: string, baseUrl?: string): { text: string; titl
   root.find("li").each((_, el) => {
     $(el).prepend("• ");
   });
-  const text = normalizeText(root.text());
-  return { text, title, links };
+  return { text: normalizeText(root.text()), title, links };
 }
 
+/** Normalise for hashing: whitespace, and volatile lines (dates, cookie banners) removed. */
 export function normalizeText(s: string): string {
   return s
     .replace(/ /g, " ")
     .replace(/[ \t\f\v]+/g, " ")
     .split("\n")
     .map((l) => l.trim())
+    .filter((l) => !/^(last updated|updated|published)[:\s]/i.test(l))
+    .filter((l) => !/(we use cookies|cookie settings|accept all cookies)/i.test(l))
     .filter((l, i, arr) => l.length > 0 || (i > 0 && arr[i - 1].length > 0))
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -85,30 +88,45 @@ export function contentHash(text: string): string {
   return createHash("sha256").update(normalizeText(text)).digest("hex");
 }
 
-/** Returns a reason if the extracted text looks like a login wall / bot check / empty shell. */
-export function blockedReason(text: string, minChars: number): string | null {
-  if (text.length < minChars) return `page content too short (${text.length} chars) – likely blocked or rendered by JavaScript`;
+/** Checks shared by every retrieval path. Returns a failure reason, or null if the content is usable. */
+export function contentProblem(text: string, opts: Pick<FetchOptions, "minChars" | "maxChars" | "previousLength">): string | null {
+  if (text.length < opts.minChars) return `Page content too short (${text.length} characters); likely blocked or rendered by JavaScript`;
   const head = text.slice(0, 3000);
-  const hit = BLOCK_PATTERNS.find((re) => re.test(head));
-  if (hit && text.length < 5000) return `page appears to be a login wall or bot check (${hit.source})`;
+  const marker = BOT_MARKERS.find((re) => re.test(head));
+  if (marker && text.length < 6000) return "Login wall or bot challenge";
+  if (text.length > opts.maxChars) return `Page is ${text.length} characters, above MAX_PAGE_CHARS; not truncated`;
+  if (opts.previousLength && text.length < 0.4 * opts.previousLength) {
+    return `Page returned ${Math.round((100 * text.length) / opts.previousLength)}% of the stored version's text; treated as not verified`;
+  }
   return null;
 }
 
-function isRetryableStatus(status: number): boolean {
-  return status === 408 || status === 425 || status === 429 || status >= 500;
+/** Same article despite locale prefixes, trailing slashes or query strings. */
+export function sameArticle(a: string, b: string): boolean {
+  const key = (u: string) => {
+    const url = new URL(u);
+    const path = url.pathname
+      .replace(/\/(en|en-us|en-gb|en_us|en_gb)(?=\/|$)/gi, "")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+    return url.hostname.replace(/^www\./, "") + path;
+  };
+  try {
+    return key(a) === key(b);
+  } catch {
+    return false;
+  }
 }
 
-export async function fetchPage(url: string, opts: FetcherOptions): Promise<FetchOutcome> {
+/** Direct HTTPS GET with manual redirect handling. */
+export async function fetchDirect(url: string, opts: FetchOptions): Promise<FetchOutcome> {
   const doFetch = opts.fetchImpl ?? fetch;
-  const sleep = opts.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
-  let lastError = "unknown error";
-  let lastStatus: number | null = null;
-
-  for (let attempt = 1; attempt <= opts.maxAttempts; attempt++) {
-    let retryAfterMs: number | null = null;
-    try {
-      const res = await doFetch(url, {
-        redirect: "follow",
+  let current = url;
+  let permanentTo: string | null = null;
+  try {
+    for (let hop = 0; hop < 6; hop++) {
+      const res = await doFetch(current, {
+        redirect: "manual",
         signal: AbortSignal.timeout(opts.timeoutMs),
         headers: {
           "user-agent": opts.userAgent,
@@ -116,67 +134,40 @@ export async function fetchPage(url: string, opts: FetcherOptions): Promise<Fetc
           "accept-language": "en-GB,en;q=0.9",
         },
       });
-      lastStatus = res.status;
-      const finalUrl = res.url || url;
-
-      if (res.status === 404 || res.status === 410) {
-        return { kind: "missing", httpStatus: res.status, finalUrl, attempts: attempt, reason: `HTTP ${res.status}` };
-      }
-      if (res.ok) {
-        const final = new URL(finalUrl);
-        const requested = new URL(url);
-        if (/\/login|checkpoint|\/auth/i.test(final.pathname)) {
-          return { kind: "failed", httpStatus: res.status, attempts: attempt, error: `redirected to login (${finalUrl})`, blocked: true };
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location");
+        if (!location) return { kind: "failed", httpStatus: res.status, reason: `HTTP ${res.status} without a Location header`, blocked: false };
+        const next = new URL(location, current).toString();
+        if (LOGIN_PATH.test(new URL(next).pathname)) {
+          return { kind: "failed", httpStatus: res.status, reason: "Redirected to a login page", blocked: true };
         }
-        if (
-          final.pathname !== requested.pathname &&
-          GENERIC_LANDING.test(final.pathname) &&
-          !GENERIC_LANDING.test(requested.pathname)
-        ) {
-          return {
-            kind: "missing",
-            httpStatus: res.status,
-            finalUrl,
-            attempts: attempt,
-            reason: `redirected to generic landing page ${finalUrl}`,
-          };
-        }
-        const contentType = res.headers.get("content-type") ?? "";
-        const body = await res.text();
-        const isHtml = /html|xml/i.test(contentType) || /^\s*</.test(body);
-        const parsed = isHtml ? htmlToText(body, finalUrl) : { text: normalizeText(body), links: [] as PageLink[] };
-        const text = parsed.text;
-        const blocked = blockedReason(text, opts.minChars);
-        if (blocked) {
-          return { kind: "failed", httpStatus: res.status, attempts: attempt, error: blocked, blocked: true };
-        }
-        if (text.length > opts.maxChars) {
-          return {
-            kind: "failed",
-            httpStatus: res.status,
-            attempts: attempt,
-            error: `page is ${text.length} chars, above MAX_PAGE_CHARS=${opts.maxChars}; not truncated – raise the limit to index it`,
-            blocked: false,
-          };
-        }
-        return { kind: "ok", text, finalUrl, httpStatus: res.status, attempts: attempt, links: parsed.links };
+        if ((res.status === 301 || res.status === 308) && !permanentTo && !sameArticle(url, next)) permanentTo = next;
+        current = next;
+        continue;
       }
-      if (res.status === 401 || res.status === 403) {
-        return { kind: "failed", httpStatus: res.status, attempts: attempt, error: `HTTP ${res.status} (access refused)`, blocked: true };
+      if (res.status === 410) return { kind: "discontinued", httpStatus: 410, reason: "HTTP 410, page removed", redirectTo: null };
+      if (res.status >= 400) {
+        return {
+          kind: "failed",
+          httpStatus: res.status,
+          reason: res.status === 403 || res.status === 401 ? `HTTP ${res.status}, access blocked` : `HTTP ${res.status}`,
+          blocked: res.status === 401 || res.status === 403 || res.status === 429,
+        };
       }
-      lastError = `HTTP ${res.status}`;
-      if (!isRetryableStatus(res.status)) {
-        return { kind: "failed", httpStatus: res.status, attempts: attempt, error: lastError, blocked: false };
+      if (permanentTo && !sameArticle(url, current)) {
+        return { kind: "discontinued", httpStatus: 301, reason: `Moved permanently to ${current}`, redirectTo: current };
       }
-      const ra = Number(res.headers.get("retry-after"));
-      if (Number.isFinite(ra) && ra > 0) retryAfterMs = Math.min(ra * 1000, 60_000);
-    } catch (err) {
-      lastError = (err as Error).name === "TimeoutError" ? `timeout after ${opts.timeoutMs}ms` : (err as Error).message;
+      const body = await res.text();
+      const isHtml = /html|xml/i.test(res.headers.get("content-type") ?? "") || /^\s*</.test(body);
+      const parsed = isHtml ? htmlToText(body, current) : { text: normalizeText(body), links: [] as PageLink[] };
+      const problem = contentProblem(parsed.text, opts);
+      if (problem) return { kind: "failed", httpStatus: res.status, reason: problem, blocked: /blocked|bot|login|JavaScript|too short/.test(problem) };
+      return { kind: "ok", text: parsed.text, finalUrl: current, httpStatus: res.status, links: parsed.links, via: "direct" };
     }
-    if (attempt < opts.maxAttempts) {
-      const backoff = retryAfterMs ?? opts.backoffBaseMs * 2 ** (attempt - 1) + Math.floor(Math.random() * 250);
-      await sleep(backoff);
-    }
+    return { kind: "failed", httpStatus: null, reason: "Too many redirects", blocked: false };
+  } catch (err) {
+    const e = err as Error;
+    const reason = e.name === "TimeoutError" ? "Timeout" : `Network error: ${e.message}`;
+    return { kind: "failed", httpStatus: null, reason, blocked: false };
   }
-  return { kind: "failed", httpStatus: lastStatus, attempts: opts.maxAttempts, error: `${lastError} after ${opts.maxAttempts} attempts`, blocked: false };
 }
