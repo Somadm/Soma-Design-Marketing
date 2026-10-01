@@ -32,11 +32,12 @@ const DEEP_WORK: [RegExp, string][] = [
 export function chooseModel(
   cfg: Pick<Config, "SAGAL_MODEL_EVERYDAY" | "SAGAL_MODEL_DEEP">,
   mode: BrainMode,
-  msg: { text: string; via: string; attachmentKinds: string[] },
+  msg: { text: string; via: string; attachmentKinds: string[]; deepReason?: string },
 ): ModelChoice {
   const pick = (tier: Tier, reason: string): ModelChoice => ({ tier, reason, model: tier === "deep" ? cfg.SAGAL_MODEL_DEEP : cfg.SAGAL_MODEL_EVERYDAY });
   if (mode === "deep") return pick("deep", "set to always use Opus");
   if (mode === "everyday") return pick("everyday", "set to always use Sonnet");
+  if (msg.deepReason) return pick("deep", msg.deepReason);
   if (msg.via === "voice") return pick("everyday", "live voice stays quick");
   if (msg.attachmentKinds.includes("pdf")) return pick("deep", "reading a document");
   if (msg.attachmentKinds.filter((k) => k === "image").length >= 3) return pick("deep", "looking at several references");

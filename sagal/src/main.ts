@@ -1,3 +1,4 @@
+import { maybeRunRoutine } from "./agent/routine.js";
 import { AuthService } from "./auth/service.js";
 import { loadConfig } from "./config.js";
 import { migrate } from "./db/migrate.js";
@@ -20,7 +21,8 @@ async function main() {
   const notifier = new Notifier(db, cfg, mailer, () => auth.ownerEmail());
   const storages = createStorages(cfg);
   const app = await buildServer({ db, cfg, vault, auth, storages, mailer, notifier });
-  const worker = startWorker(db, notifier, cfg.WORKER_POLL_SECONDS);
+  // Sagal's morning routine: keeps the posting days filled (drafts + one-tap proposals).
+  const worker = startWorker(db, notifier, cfg.WORKER_POLL_SECONDS, () => maybeRunRoutine({ db, cfg, vault, storages, notifier }));
   await app.listen({ port: cfg.PORT, host: cfg.HOST });
   console.log(`Sagal is running at ${cfg.APP_URL} (storage: ${cfg.STORAGE_DRIVER}, models: ${cfg.SAGAL_MODEL_EVERYDAY} / ${cfg.SAGAL_MODEL_DEEP})`);
 

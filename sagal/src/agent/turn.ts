@@ -74,7 +74,7 @@ async function attachmentBlocks(deps: TurnDeps, m: Message): Promise<BetaContent
  * saved; if Sagal can't answer, it's marked "Not sent" with the reason, and Retry runs
  * this again.
  */
-export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessage: Message, emit: (e: TurnEvent) => void, signal?: AbortSignal) {
+export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessage: Message, emit: (e: TurnEvent) => void, signal?: AbortSignal, opts: { deepReason?: string } = {}) {
   const { db } = deps;
   const fail = async (error: string) => {
     const { rows } = await db.query<Message>("UPDATE sagal.messages SET status = 'failed', error = $2 WHERE id = $1 RETURNING *", [sabahMessage.id, error]);
@@ -92,6 +92,7 @@ export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessa
     text: sabahMessage.text,
     via: sabahMessage.via,
     attachmentKinds: (sabahMessage.attachments ?? []).map((a) => a.kind),
+    deepReason: opts.deepReason,
   });
   emit({ type: "thinking", model: TIER_LABEL[choice.tier], tier: choice.tier, reason: choice.reason });
   const brain = deps.brain ? deps.brain(key) : new ClaudeBrain(key, deps.cfg.SAGAL_EFFORT);

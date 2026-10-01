@@ -4,6 +4,7 @@ import { assetLink, listUsableImages, saveVoiceover, UploadError, voiceoverLink 
 import { addComment, assertUsableImages, CAPTION_LIMITS, createCarousel, getCarousel, listCarousels, ROLES, SlideImageError, updateCarousel } from "../../domain/carousels.js";
 import { addMessage } from "../../domain/conversations.js";
 import { listInbox, resolveByKey } from "../../domain/inbox.js";
+import { moveIntoPlan } from "../../domain/plan.js";
 import { markPostedByHand } from "../../domain/posts.js";
 import { CATEGORIES, REACTIONS, refreshReference, saveReference, updateReference } from "../../domain/inspiration.js";
 import { hasSample } from "../../domain/sample.js";
@@ -176,6 +177,15 @@ export async function contentRoutes(app: FastifyInstance, deps: Deps) {
     const action: string = (b.which === "primary" ? item.primary_action : item.secondary_action) ?? "resolve";
     if (action.startsWith("go:")) return { navigate: action.slice(3) };
     if (action.startsWith("post_by_hand:")) await markPostedByHand(db, Number(action.split(":")[1]));
+    const plan = /^plan_idea:(\d+):(\d{4}-\d{2}-\d{2}):(\d{2}:\d{2})$/.exec(action);
+    if (plan) {
+      // Sabah's tap on Sagal's proposal: this is her authorisation to plan the post.
+      try {
+        await moveIntoPlan(db, Number(plan[1]), plan[2], plan[3]);
+      } catch (err) {
+        throw new HttpError(400, (err as Error).message);
+      }
+    }
     await db.query("UPDATE sagal.inbox_items SET resolution = $2, resolved_at = now() WHERE id = $1", [id, label]);
     if (item.ref?.conversationId) {
       await addMessage(db, item.ref.conversationId, { sender: "system", text: `Sabah chose “${label}” on “${item.title}” in Needs Sabah.` });

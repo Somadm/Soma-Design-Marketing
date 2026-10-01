@@ -44,17 +44,25 @@ export function useViewport() {
   return vw;
 }
 
+/** Recent GET results, so a panel that mounts again straight away doesn't refetch (or flash empty). */
+const recent = new Map<string, { at: number; data: unknown }>();
+const FRESH_MS = 2000;
+
 /** Load data from the API; `reload` refetches; errors shown inline. */
 export function useLoad<T>(url: string | null, deps: unknown[] = []) {
-  const [data, setData] = useState<T | null>(null);
+  const cached = url ? recent.get(url) : undefined;
+  const [data, setData] = useState<T | null>(cached ? (cached.data as T) : null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
   const seq = useRef(0);
+  const firstRun = useRef(true);
+  const runs = useRef<number[]>([]);
   const reload = useCallback(async () => {
     if (!url) return;
     const n = ++seq.current;
     try {
       const d = await api.get<T>(url);
+      recent.set(url, { at: Date.now(), data: d });
       if (n === seq.current) {
         setData(d);
         setError(null);
@@ -66,6 +74,22 @@ export function useLoad<T>(url: string | null, deps: unknown[] = []) {
     }
   }, [url]);
   useEffect(() => {
+    const first = firstRun.current;
+    firstRun.current = false;
+    const hit = url ? recent.get(url) : undefined;
+    // Mounting again right after a load: reuse it. Changed inputs always refetch.
+    if (first && hit && Date.now() - hit.at < FRESH_MS) {
+      setData(hit.data as T);
+      setLoading(false);
+      return;
+    }
+    // Safety brake: never hammer the server if something re-runs this in a loop.
+    const now = Date.now();
+    runs.current = runs.current.filter((t) => now - t < 3000).concat(now);
+    if (runs.current.length > 10) {
+      if (runs.current.length === 11) console.warn(`Sagal: stopped reloading ${url} in a loop.`);
+      return;
+    }
     setLoading(true);
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps

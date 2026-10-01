@@ -3,7 +3,8 @@ import { z } from "zod";
 import { assetLink } from "../../domain/assets.js";
 import { deleteMemory, FACT_FIELDS, listMemory, memoryHistory, writeMemory } from "../../domain/memory.js";
 import { hasSample, loadSample, removeSample } from "../../domain/sample.js";
-import { getSettings, setSetting } from "../../domain/settings.js";
+import { getSettings, setSetting, WEEKDAYS } from "../../domain/settings.js";
+import { maybeRunRoutine, MAX_PER_RUN, postingGaps, ROUTINE_FROM } from "../../agent/routine.js";
 import { HttpError, idParam, parse, type Deps } from "../deps.js";
 import { uploadFrom } from "./talk.js";
 
@@ -75,6 +76,24 @@ export async function memoryRoutes(app: FastifyInstance, deps: Deps) {
     const b = parse(z.object({ inbox: z.boolean(), fail: z.boolean(), daily: z.boolean(), published: z.boolean(), quiet: z.boolean() }).partial(), req.body);
     const s = await getSettings(db);
     await setSetting(db, "notifications", { ...s.notifications, ...b });
+    return { ok: true };
+  });
+
+  app.get("/api/routine", async () => {
+    const { routine } = await getSettings(db);
+    return { routine, gaps: await postingGaps(db, routine), from: ROUTINE_FROM, maxPerRun: MAX_PER_RUN };
+  });
+  app.patch("/api/settings/routine", async (req) => {
+    const b = parse(z.object({ enabled: z.boolean().optional(), days: z.array(z.enum(WEEKDAYS)).max(7).optional() }), req.body);
+    const { routine } = await getSettings(db);
+    const days = b.days ? WEEKDAYS.filter((d) => b.days!.includes(d)) : routine.days;
+    await setSetting(db, "routine", { ...routine, enabled: b.enabled ?? routine.enabled, days });
+    return { ok: true };
+  });
+  /** "Do it now": runs the morning check straight away, in the background. */
+  app.post("/api/routine/run", async () => {
+    void maybeRunRoutine({ db, cfg: deps.cfg, vault: deps.vault, storages: deps.storages, notifier: deps.notifier, brain: deps.brain, linkPreview: deps.linkPreview }, { force: true })
+      .catch((err) => app.log.error(err));
     return { ok: true };
   });
 

@@ -4,6 +4,8 @@ import type { Message } from "../domain/conversations.js";
 import { listUsableImages } from "../domain/assets.js";
 import { memoryDigest } from "../domain/memory.js";
 import { tasteDigest } from "../domain/inspiration.js";
+import { getSettings } from "../domain/settings.js";
+import { postingGaps } from "./routine.js";
 import { listIdeas, weekDays } from "../domain/plan.js";
 import { listPosts } from "../domain/posts.js";
 import { integrationStates, SERVICES } from "../integrations/registry.js";
@@ -55,6 +57,8 @@ export async function buildContext(db: DbClient, opts: { spoken: boolean; conver
   ]);
   const images = await listUsableImages(db, 20);
   const taste = await tasteDigest(db);
+  const { routine } = await getSettings(db);
+  const gaps = await postingGaps(db, routine, now);
   const agreed = ideas.filter((i) => i.status === "agreed");
   const board = ideas.filter((i) => i.status === "board");
   const lines = [
@@ -73,6 +77,7 @@ export async function buildContext(db: DbClient, opts: { spoken: boolean; conver
     `Publishing authorisation: ${auth.mode === "plan" ? "publish within the approved plan" : "review each finished post"}; channels: ${auth.channels.join(", ") || "none"}; ${auth.paused ? "ALL PUBLISHING IS PAUSED" : "not paused"}; production spend €${spent.toFixed(2)} of €${auth.spend_limit_eur} this month.`,
     `Connections: ${SERVICES.map((s) => `${s.name} ${(states[s.id]?.state ?? "not_connected").replace("_", " ")}`).join("; ")}. Nothing publishes automatically until a platform is connected: due posts are handed to Sabah to post by hand.`,
     "",
+    `Posting rhythm: ${routine.days.join(", ") || "not set"}. Next 7 days with nothing planned or proposed: ${gaps.length ? gaps.join(", ") : "none, the week is covered"}.${routine.enabled ? " Your morning routine fills these on its own." : " Sabah has paused your morning routine."}`,
     `Agreed plan (${days[0]} to ${days[6]}):`,
     ...(agreed.length ? agreed.map((i) => `- [idea ${i.id}] ${i.plan_date}: ${i.title} (${i.format}; ${i.platforms.join(", ")})`) : ["- nothing agreed yet"]),
     "This week's posts:",

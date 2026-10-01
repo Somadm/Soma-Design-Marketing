@@ -39,6 +39,8 @@ export async function accountRoutes(app: FastifyInstance, deps: Deps) {
     } catch (err) {
       throw new HttpError(400, (err as Error).message);
     }
+    // Keys that can be checked are checked straight away, so "connected" means it works.
+    if (s.id === "heygen") return { ok: true, test: await testService(s.id) };
     return { ok: true };
   });
 
@@ -48,12 +50,11 @@ export async function accountRoutes(app: FastifyInstance, deps: Deps) {
     return { ok: true };
   });
 
-  /** Optional check Sabah can run after pasting a key. Only runs when she presses it. */
-  app.post("/api/accounts/:service/test", async (req) => {
-    const s = svc((req.params as { service: string }).service);
+  /** Checks a saved key against the service itself. Only runs when Sabah saves or presses Test. */
+  async function testService(id: ServiceId): Promise<{ ok: boolean; message: string }> {
     const f = deps.fetchImpl ?? fetch;
     try {
-      if (s.id === "anthropic") {
+      if (id === "anthropic") {
         const key = (await vault.get("anthropic.api_key")) ?? cfg.ANTHROPIC_API_KEY;
         if (!key) throw new Error("No key saved yet.");
         const client = new Anthropic({ apiKey: key, maxRetries: 0 });
@@ -62,7 +63,7 @@ export async function accountRoutes(app: FastifyInstance, deps: Deps) {
         await setState(db, "anthropic", "connected", { account: "Sonnet 5.5 + Opus 5.5" });
         return { ok: true, message: "Claude answered. Sagal can use both Sonnet 5.5 and Opus 5.5." };
       }
-      if (s.id === "email") {
+      if (id === "email") {
         const to = await deps.auth.ownerEmail();
         if (!to) throw new Error("No owner email.");
         const how = await deps.mailer.send({ to, subject: "Sagal · test email", text: "If you can read this, Sagal can email you." });
@@ -70,13 +71,26 @@ export async function accountRoutes(app: FastifyInstance, deps: Deps) {
         await setState(db, "email", "connected", { account: to });
         return { ok: true, message: `Sent a test email to ${to}.` };
       }
-      void f;
+      if (id === "heygen") {
+        const key = await vault.get("heygen.api_key");
+        if (!key) throw new Error("No HeyGen key saved yet.");
+        const r = await f("https://api.heygen.com/v2/user/remaining_quota", { headers: { "X-Api-Key": key, accept: "application/json" }, signal: AbortSignal.timeout(10_000) });
+        const body = (await r.json().catch(() => null)) as { error?: unknown; data?: { remaining_quota?: number } } | null;
+        if (r.status === 401 || r.status === 403) throw new Error("HeyGen didn't accept this key. Copy it again from HeyGen → Settings → API (the API key, not your password) and paste it here.");
+        if (!r.ok || !body || body.error) throw new Error(`HeyGen answered with an error (${r.status}). Try again in a minute.`);
+        const credit = typeof body.data?.remaining_quota === "number" ? ` · API credit left: ${body.data.remaining_quota}` : "";
+        await setState(db, "heygen", "connected", { account: `API key works${credit}` });
+        return { ok: true, message: `HeyGen accepted the key${credit}.` };
+      }
       return { ok: false, message: "There's no test for this one yet. It's checked when it's first used." };
     } catch (err) {
-      await setState(db, s.id, "needs_reconnect", { error: (err as Error).message });
-      return { ok: false, message: (err as Error).message };
+      const message = (err as Error).name === "TimeoutError" ? "The service took too long to answer. Try again in a minute." : (err as Error).message;
+      await setState(db, id, "needs_reconnect", { error: message });
+      return { ok: false, message };
     }
-  });
+  }
+
+  app.post("/api/accounts/:service/test", async (req) => testService(svc((req.params as { service: string }).service).id));
 
   app.get("/api/oauth/:service/start", async (req, reply) => {
     const s = svc((req.params as { service: string }).service);

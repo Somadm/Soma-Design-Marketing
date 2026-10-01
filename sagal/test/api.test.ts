@@ -14,18 +14,39 @@ describe("Connected accounts", () => {
     const a = api(t);
     const first = (await a.get("/api/accounts")).json().services;
     expect(first.every((s: { state: string }) => s.state === "not_connected")).toBe(true);
-    expect((await a.put("/api/accounts/heygen", {})).statusCode).toBe(400);
-    expect((await a.put("/api/accounts/heygen", { api_key: "hg_live_abcdefgh1234" })).statusCode).toBe(200);
-    const after = (await a.get("/api/accounts")).json().services.find((s: { id: string }) => s.id === "heygen");
+    expect((await a.put("/api/accounts/captions", {})).statusCode).toBe(400);
+    expect((await a.put("/api/accounts/captions", { api_key: "cap_live_abcdefgh1234" })).statusCode).toBe(200);
+    const after = (await a.get("/api/accounts")).json().services.find((s: { id: string }) => s.id === "captions");
     expect(after.state).toBe("credentials_saved");
     expect(after.saved.api_key).toBe("…1234");
-    expect(JSON.stringify((await a.get("/api/accounts")).json())).not.toContain("hg_live_abcdefgh1234");
-    const raw = (await t.db.query("SELECT ciphertext FROM sagal.secrets WHERE name = 'heygen.api_key'")).rows[0].ciphertext.toString("utf8");
-    expect(raw).not.toContain("hg_live");
-    expect(await t.vault.get("heygen.api_key")).toBe("hg_live_abcdefgh1234");
-    // HeyGen key saved ≠ connected: Video studio still offers the manual handoff.
-    expect((await a.del("/api/accounts/heygen")).statusCode).toBe(200);
-    expect(await t.vault.get("heygen.api_key")).toBeNull();
+    expect(JSON.stringify((await a.get("/api/accounts")).json())).not.toContain("cap_live_abcdefgh1234");
+    const raw = (await t.db.query("SELECT ciphertext FROM sagal.secrets WHERE name = 'captions.api_key'")).rows[0].ciphertext.toString("utf8");
+    expect(raw).not.toContain("cap_live");
+    expect(await t.vault.get("captions.api_key")).toBe("cap_live_abcdefgh1234");
+    // A saved key isn't "connected" until it's checked: Video studio still offers the manual handoff.
+    expect((await a.del("/api/accounts/captions")).statusCode).toBe(200);
+    expect(await t.vault.get("captions.api_key")).toBeNull();
+  });
+
+  it("checks a HeyGen key as soon as it's saved", async () => {
+    let status = 200;
+    const seen: string[] = [];
+    const fetchImpl = (async (url: string, init: { headers: Record<string, string> }) => {
+      seen.push(`${url} ${init.headers["X-Api-Key"]}`);
+      return new Response(JSON.stringify(status === 200 ? { error: null, data: { remaining_quota: 1200 } } : { error: { code: 401 } }), { status });
+    }) as unknown as typeof fetch;
+    t = await makeApp({ fetchImpl });
+    const a = api(t);
+    const r = (await a.put("/api/accounts/heygen", { api_key: "hg_good_key_1234" })).json();
+    expect(r.test).toMatchObject({ ok: true });
+    expect(seen[0]).toBe("https://api.heygen.com/v2/user/remaining_quota hg_good_key_1234");
+    const hg = () => a.get("/api/accounts").then((x) => x.json().services.find((s: { id: string }) => s.id === "heygen"));
+    expect((await hg()).state).toBe("connected");
+    status = 401;
+    const bad = (await a.put("/api/accounts/heygen", { api_key: "hg_wrong" })).json();
+    expect(bad.test.ok).toBe(false);
+    expect(bad.test.message).toMatch(/didn't accept this key/);
+    expect((await hg()).state).toBe("needs_reconnect");
   });
 
   it("runs OAuth with a one-time state and stores tokens encrypted", async () => {

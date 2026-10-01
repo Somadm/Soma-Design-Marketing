@@ -35,6 +35,7 @@ export function PlanScreen() {
             <button className="pill" onClick={() => setWeek(shiftWeek(data.days[0], 1))} aria-label="Next week">Week ›</button>
           </div>
         </div>
+        <Routine onChange={reload} />
         <div style={{ overflowX: "auto", paddingBottom: 4 }}>
           <div style={{ display: "grid", gridTemplateColumns: wide ? "repeat(7,minmax(0,1fr))" : "repeat(7,minmax(180px,1fr))", gap: 8 }}>
             {data.days.map((d) => {
@@ -137,5 +138,47 @@ function NewIdea({ formats, onDone }: { formats: string[]; onDone: () => void })
       </div>
       <button className="btn ink" style={{ alignSelf: "flex-start" }} disabled={busy || !f.title.trim() || !f.platforms.length}>Add to the board</button>
     </form>
+  );
+}
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+type Wd = (typeof WEEKDAYS)[number];
+interface RoutineData { routine: { enabled: boolean; days: Wd[]; lastRun: string | null }; gaps: string[]; from: string; maxPerRun: number }
+
+/** Sagal's morning check: the posting days she keeps filled without being asked. */
+function Routine({ onChange }: { onChange: () => void }) {
+  const { data, reload } = useLoad<RoutineData>("/api/routine");
+  const { run, busy } = useAction();
+  if (!data) return null;
+  const r = data.routine;
+  const save = (body: Partial<RoutineData["routine"]>, msg: string) => run(async () => { await api.patch("/api/settings/routine", body); await reload(); }, msg);
+  const toggleDay = (d: Wd) => save({ days: r.days.includes(d) ? r.days.filter((x) => x !== d) : [...r.days, d] }, "Posting days saved.");
+  const gapText = data.gaps.length
+    ? `${data.gaps.length} posting day${data.gaps.length === 1 ? "" : "s"} in the next week ${data.gaps.length === 1 ? "has" : "have"} nothing planned yet.`
+    : "Every posting day in the next week is planned or waiting for your yes.";
+  return (
+    <div className="card soft stack g12" style={{ borderRadius: 20 }}>
+      <div className="row between g12 wrap">
+        <div className="stack g4" style={{ maxWidth: 680 }}>
+          <b style={{ fontSize: 16 }}>Sagal keeps you posting</b>
+          <span className="small" style={{ lineHeight: 1.5 }}>
+            {r.enabled
+              ? `Every morning after ${data.from} she checks the week ahead. For each empty posting day she prepares the post (idea, finished design, captions) and asks you in Needs Sabah. One tap on “Plan it” and it's in. Up to ${data.maxPerRun} a morning.`
+              : "Her morning check is paused. She'll only make posts when you ask."}
+          </span>
+          <span className="small muted">{gapText}{r.lastRun ? ` Last check: ${dayDate(r.lastRun)}.` : ""}</span>
+        </div>
+        <div className="row g8 wrap">
+          <button className="btn outline sm" disabled={busy || !r.enabled} onClick={() => run(async () => { await api.post("/api/routine/run"); setTimeout(() => { void reload(); onChange(); }, 4000); }, "Sagal's on it. Her proposals arrive in Needs Sabah in a minute or two.")}>Check now</button>
+          <button className="btn ghost sm" aria-pressed={r.enabled} onClick={() => save({ enabled: !r.enabled }, r.enabled ? "Morning check paused." : "Morning check is on.")}>{r.enabled ? "Pause" : "Turn on"}</button>
+        </div>
+      </div>
+      <div className="row g6 wrap" role="group" aria-label="Posting days">
+        <span className="small" style={{ fontWeight: 600, marginRight: 4 }}>Posting days</span>
+        {WEEKDAYS.map((d) => (
+          <button key={d} className={`pill sm${r.days.includes(d) ? " on" : ""}`} aria-pressed={r.days.includes(d)} onClick={() => toggleDay(d)}>{d}</button>
+        ))}
+      </div>
+    </div>
   );
 }

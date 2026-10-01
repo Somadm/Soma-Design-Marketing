@@ -77,3 +77,7 @@ export function inQuietHours(now: Date, start = "21:00", end = "08:00"): boolean
   const t = helsinkiTime(now);
   return start <= end ? t >= start && t < end : t >= start || t < end;
 }
+
+const LONG_DATE = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
+/** "YYYY-MM-DD" → "Thursday 2 October". */
+export const longDate = (date: string) => LONG_DATE.format(new Date(`${date}T12:00:00Z`));

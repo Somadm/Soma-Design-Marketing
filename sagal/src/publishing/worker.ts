@@ -126,13 +126,15 @@ export async function maybeDailySummary(db: Db, notifier: Notifier, now = new Da
   );
 }
 
-export function startWorker(db: Db, notifier: Notifier, pollSeconds: number) {
+/** `daily` runs alongside (never blocking due posts), e.g. Sagal's morning routine. */
+export function startWorker(db: Db, notifier: Notifier, pollSeconds: number, daily?: () => Promise<unknown>) {
   let stopped = false;
   let running: Promise<void> | null = null;
   const tick = async () => {
     try {
       await processDuePosts(db, notifier);
       await maybeDailySummary(db, notifier);
+      daily?.().catch((err) => console.error("[sagal] morning routine failed:", (err as Error).message));
     } catch (err) {
       console.error("[sagal] worker tick failed:", (err as Error).message);
     }

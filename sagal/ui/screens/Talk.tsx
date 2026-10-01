@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api, stream } from "../api";
-import { BrainSwitch, Kicker, MarkS, Tag, hhmm, useApp, useRouter, when } from "../lib";
+import { BrainSwitch, Kicker, MarkS, Tag, hhmm, useApp, useLoad, useRouter, when } from "../lib";
 import { MiniSlide, type Carousel } from "../slides";
 import { SpeechRecognitionCtor, VoicePanel } from "./Voice";
 import { Workspace, type WsFocus, type WsTab } from "./Workspace";
@@ -646,10 +646,8 @@ function SagalMsg({ m, portrait, onOpen, onPick }: { m: Msg; portrait?: string |
 }
 
 function CarouselCard({ card, onOpen }: { card: NonNullable<Msg["card"]>; onOpen: () => void }) {
-  const [c, setC] = useState<Carousel | null>(null);
-  useEffect(() => {
-    if (card.id) api.get<{ carousel: Carousel }>(`/api/carousels/${card.id}`).then((r) => setC(r.carousel)).catch(() => {});
-  }, [card.id]);
+  const c = useLoad<{ carousel: Carousel }>(card.id ? `/api/carousels/${card.id}` : null, [card.id]).data?.carousel ?? null;
+  const { vw } = useApp();
   return (
     <button className="msg-card stack g14" style={{ padding: 14 }} onClick={onOpen}>
       {c && (
@@ -662,7 +660,7 @@ function CarouselCard({ card, onOpen }: { card: NonNullable<Msg["card"]>; onOpen
           <span style={{ fontWeight: 600, fontSize: 15 }}>{card.title}</span>
           <span className="small muted">{card.sub}</span>
         </span>
-        <span className="small" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>Open on the right ↗</span>
+        <span className="small" style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{vw < 880 ? "Open ↗" : "Open on the right ↗"}</span>
       </span>
     </button>
   );

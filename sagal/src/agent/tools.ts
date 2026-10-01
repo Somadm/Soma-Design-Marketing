@@ -7,7 +7,9 @@ import { CATEGORIES, REACTIONS, saveReference, updateReference, type Previewer }
 import { OwnershipError, writeMemory } from "../domain/memory.js";
 import type { Notifier } from "../domain/notify.js";
 import { createIdea, FORMATS } from "../domain/plan.js";
+import { getSettings } from "../domain/settings.js";
 import { createVideoJob } from "../domain/video.js";
+import { helsinkiDate, isValidDate, longDate } from "../time.js";
 import { LinkError } from "../inspiration/linkPreview.js";
 import { CHANNELS } from "../publishing/permissions.js";
 import type { Storages } from "../storage/storage.js";
@@ -100,6 +102,12 @@ const schemas = {
     why: z.string().max(800).optional().describe("What Sabah said she likes or dislikes about it, in her words"),
     noticed: z.string().max(800).optional().describe("What you notice that's worth learning from"),
   }),
+  propose_post: z.object({
+    idea_id: z.number().int(),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Helsinki date YYYY-MM-DD, from tomorrow on"),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional().describe("Helsinki time HH:MM; default is Sabah's usual posting time"),
+    why: z.string().min(1).max(400).describe("One plain sentence: why this post, this day"),
+  }),
   update_reference: z.object({
     reference_id: z.number().int(),
     reaction: z.enum(REACTIONS).optional(),
@@ -123,6 +131,7 @@ const desc: Record<ToolName, string> = {
   propose_for_paid: "Propose an organic post to Bilan for a paid test. It goes to Sabah first in Results & Bilan; nothing goes to Bilan without her.",
   show_this_week: "Show the agreed plan for this week in the workspace.",
   save_reference: "Save a link or idea Sabah shares to her Inspiration board, so you both learn her taste from it. Use it when she shares a link she likes (or dislikes), or asks you to keep something for inspiration. The app reads the page's title and picture itself.",
+  propose_post: "Ask Sabah to put a prepared idea into the plan on a given day. It goes to Needs Sabah (and her email) with a one-tap 'Plan it' button; nothing is planned or published until she taps it. Prepare the post first (idea plus carousel or script).",
   update_reference: "Fill in or correct a reference on the Inspiration board: what you noticed, an original Soma idea it sparks, or Sabah's reaction and reason when she tells you.",
 };
 
@@ -235,6 +244,26 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         if (!ctx.storages) return { result: "Saving references isn't available here.", isError: true };
         const saved = await saveReference(db, ctx.storages, { ...r, url: r.url ?? null }, ctx.linkPreview);
         return { result: `Saved to the Inspiration board as [reference ${saved.id}].${saved.note ? ` ${saved.note}` : ""}` };
+      }
+      case "propose_post": {
+        const r = parsed.data as z.infer<typeof schemas.propose_post>;
+        const { rows } = await db.query<{ title: string; status: string; format: string; platforms: string[] }>("SELECT title, status, format, platforms FROM sagal.ideas WHERE id = $1", [r.idea_id]);
+        const idea = rows[0];
+        if (!idea) return { result: "No idea with that id.", isError: true };
+        if (idea.status === "agreed") return { result: "That idea is already in the plan.", isError: true };
+        const today = helsinkiDate(new Date());
+        if (!isValidDate(r.date) || r.date <= today) return { result: "Pick a date from tomorrow on.", isError: true };
+        const time = r.time ?? (await getSettings(db)).defaultPostTime;
+        const day = longDate(r.date);
+        await createInboxItem(db, {
+          kind: "Approval needed", dueLabel: `For ${day}`,
+          title: `Post “${idea.title}” on ${day}?`,
+          body: `${r.why}\n\n${idea.format} for ${idea.platforms.join(", ")}, ready to look at in Carousel studio. Tap “Plan it” and it goes into the plan for ${day} at ${time} (Helsinki).`,
+          primaryLabel: "Plan it", primaryAction: `plan_idea:${r.idea_id}:${r.date}:${time}`,
+          secondaryLabel: "Not this one", dedupeKey: `plan-proposal:${r.date}`,
+          ref: { conversationId: ctx.conversationId, ideaId: r.idea_id },
+        }, ctx.notifier);
+        return { result: `Proposed for ${day} at ${time}. It's waiting for Sabah in Needs Sabah.` };
       }
       case "update_reference": {
         const r = parsed.data as z.infer<typeof schemas.update_reference>;

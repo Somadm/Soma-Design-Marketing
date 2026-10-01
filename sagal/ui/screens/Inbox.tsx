@@ -47,7 +47,7 @@ export function InboxScreen() {
             <div className="serif" style={{ fontSize: "clamp(28px,3vw,36px)", lineHeight: 1.05, letterSpacing: "-.01em" }}>{it.title}</div>
             <div className="row g12" style={{ alignItems: "flex-start" }}>
               <MarkS size={26} />
-              <div style={{ fontSize: 16, lineHeight: 1.6, maxWidth: 680, textWrap: "pretty" } as React.CSSProperties}>{it.body}</div>
+              <div style={{ fontSize: 16, lineHeight: 1.6, maxWidth: 680, textWrap: "pretty", whiteSpace: "pre-line" } as React.CSSProperties}>{it.body}</div>
             </div>
             <div className="row g8 wrap" style={{ paddingLeft: 38 }}>
               <button className="btn ink" onClick={() => act(it, "primary")}>{it.primary_label}</button>
