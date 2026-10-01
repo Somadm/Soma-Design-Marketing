@@ -126,6 +126,8 @@ describe("Talk to Sagal", () => {
       tools: [{ name: "write_video_script", input: { title: "Why one sentence", lines: [{ t: "0:00", part: "Hook", line: "We cut our homepage down to one sentence." }, { t: "0:34", part: "Close", line: "What would yours say?" }] } }],
     }));
     t = await makeApp({ cfg: { ANTHROPIC_API_KEY: "sk-ant-test" }, brain });
+    // Quiet hours (Helsinki night) hold emails back; this test must pass at any hour.
+    await api(t).patch("/api/settings/notifications", { quiet: false });
     await api(t).post(`/api/conversations/${await newConv(t)}/messages`, { text: "Write the script." });
     const inbox = (await api(t).get("/api/inbox")).json().open;
     expect(inbox[0]).toMatchObject({ kind: "Missing audio", primary_action: "go:video" });

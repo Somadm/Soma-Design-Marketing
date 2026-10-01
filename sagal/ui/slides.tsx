@@ -7,6 +7,21 @@ export interface Slide {
   body: string;
   visual: string;
   theme: string;
+  imageAssetId?: number | null;
+  imageLayout?: "frame" | "full";
+}
+
+const imgSrc = (id: number) => `/api/assets/${id}/raw`;
+const isFull = (s: Slide) => Boolean(s.imageAssetId && s.imageLayout === "full");
+
+/** Full-bleed image with the same darkening the export uses, so text stays readable. */
+function FullImage({ id }: { id: number }) {
+  return (
+    <>
+      <img src={imgSrc(id)} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(17,17,17,.35) 0%, rgba(17,17,17,.15) 45%, rgba(17,17,17,.72) 100%)" }} />
+    </>
+  );
 }
 
 export interface Carousel {
@@ -37,13 +52,16 @@ export type Crop = keyof typeof CROPS;
 
 export function SlideView({ slide, n, count, crop = "4:5", safe = false, radius = 14, shadow = false }: { slide: Slide; n: number; count: number; crop?: Crop; safe?: boolean; radius?: number; shadow?: boolean }) {
   const c = CROPS[crop];
+  const full = isFull(slide);
+  const fullText = full ? ({ color: "#fff", "--sub": "rgba(255,255,255,.86)" } as React.CSSProperties) : {};
   return (
     <div
       className={`slide th-${slide.theme}`}
-      style={{ aspectRatio: c.ratio, borderRadius: radius, boxShadow: shadow ? "0 30px 60px -36px rgba(0,0,0,.4)" : undefined }}
+      style={{ aspectRatio: c.ratio, borderRadius: radius, boxShadow: shadow ? "0 30px 60px -36px rgba(0,0,0,.4)" : undefined, ...fullText }}
       role="img"
       aria-label={`Slide ${n}: ${slide.head || "empty"}`}
     >
+      {full && <FullImage id={slide.imageAssetId!} />}
       <div className="slide-in" style={{ padding: crop === "4:5" ? "8cqw" : c.pad }}>
         <div className="row between sub" style={{ fontFamily: "var(--mono)", fontSize: "3cqw", letterSpacing: ".06em", textTransform: "uppercase" }}>
           <span>{slide.kicker}</span>
@@ -52,12 +70,17 @@ export function SlideView({ slide, n, count, crop = "4:5", safe = false, radius 
           </span>
         </div>
         <div className="stack" style={{ gap: "4cqw" }}>
-          {slide.visual && (
-            <div className="sub" style={{ aspectRatio: "16 / 10", borderRadius: "2cqw", border: "1px dashed currentColor", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "4cqw", fontFamily: "var(--mono)", fontSize: "3cqw" }}>
-              {slide.visual}
-            </div>
+          {!full && slide.imageAssetId ? (
+            <img src={imgSrc(slide.imageAssetId)} alt="" style={{ aspectRatio: "16 / 10", width: "100%", objectFit: "cover", borderRadius: "2cqw", display: "block" }} />
+          ) : (
+            !full &&
+            slide.visual && (
+              <div className="sub" style={{ aspectRatio: "16 / 10", borderRadius: "2cqw", border: "1px dashed currentColor", display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "4cqw", fontFamily: "var(--mono)", fontSize: "3cqw" }}>
+                {slide.visual}
+              </div>
+            )
           )}
-          <div style={{ fontFamily: "var(--serif)", fontSize: headSize(slide, 11.5), lineHeight: 1.02, letterSpacing: "-.015em", textWrap: "balance" } as React.CSSProperties}>
+          <div style={{ fontFamily: "var(--serif)", fontSize: headSize(!full && slide.imageAssetId ? { ...slide, visual: "x" } : full ? { ...slide, visual: "" } : slide, 11.5), lineHeight: 1.02, letterSpacing: "-.015em", textWrap: "balance" } as React.CSSProperties}>
             {slide.head || <span className="sub">Headline</span>}
           </div>
           {slide.body && <div className="sub" style={{ fontSize: "3.8cqw", lineHeight: 1.4, whiteSpace: "pre-line" }}>{slide.body}</div>}
@@ -83,8 +106,13 @@ export function SlideView({ slide, n, count, crop = "4:5", safe = false, radius 
 
 /** Tiny slide for cards and navigators. */
 export function MiniSlide({ slide, n, size = 15, numberOnly = false }: { slide: Slide; n: number; size?: number; numberOnly?: boolean }) {
+  const full = isFull(slide);
   return (
-    <div className={`slide th-${slide.theme}`} style={{ aspectRatio: "4 / 5", borderRadius: 8 }}>
+    <div className={`slide th-${slide.theme}`} style={{ aspectRatio: "4 / 5", borderRadius: 8, ...(full ? ({ color: "#fff", "--sub": "rgba(255,255,255,.86)" } as React.CSSProperties) : {}) }}>
+      {full && <FullImage id={slide.imageAssetId!} />}
+      {!full && slide.imageAssetId && !numberOnly && (
+        <img src={imgSrc(slide.imageAssetId)} alt="" style={{ position: "absolute", left: "9cqw", right: "9cqw", top: "22cqw", width: "82cqw", aspectRatio: "16 / 10", objectFit: "cover", borderRadius: "3cqw" }} />
+      )}
       {numberOnly ? (
         <div style={{ position: "absolute", left: "10cqw", right: "10cqw", bottom: "12cqw", fontFamily: "var(--serif)", fontSize: "13cqw", lineHeight: 1 }}>{n}</div>
       ) : (

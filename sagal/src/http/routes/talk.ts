@@ -149,7 +149,7 @@ async function streamTurn(req: FastifyRequest, reply: import("fastify").FastifyR
   try {
     // The turn runs to completion even if the browser goes away, so the reply is saved
     // and appears when Sabah reopens the conversation on any device.
-    await runTurn({ db: deps.db, cfg: deps.cfg, vault: deps.vault, storages: deps.storages, notifier: deps.notifier, brain: deps.brain }, conversationId, sabah, emit, ctrl.signal);
+    await runTurn({ db: deps.db, cfg: deps.cfg, vault: deps.vault, storages: deps.storages, notifier: deps.notifier, brain: deps.brain, linkPreview: deps.linkPreview }, conversationId, sabah, emit, ctrl.signal);
   } catch (err) {
     emit({ type: "failed", message: sabah, error: `Something went wrong: ${(err as Error).message}` });
   } finally {

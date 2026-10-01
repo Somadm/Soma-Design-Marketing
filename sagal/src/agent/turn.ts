@@ -2,6 +2,7 @@ import type { BetaContentBlockParam } from "@anthropic-ai/sdk/resources/beta/mes
 import type { Config } from "../config.js";
 import type { Db } from "../db/pool.js";
 import { addMessage, getConversation, messages, type Message } from "../domain/conversations.js";
+import type { Previewer } from "../domain/inspiration.js";
 import type { Notifier } from "../domain/notify.js";
 import { setState } from "../integrations/registry.js";
 import type { Vault } from "../secrets/vault.js";
@@ -30,6 +31,7 @@ export interface TurnDeps {
   notifier?: Notifier;
   /** Tests inject a fake brain; production builds Claude from the saved key. */
   brain?: (apiKey: string) => Brain;
+  linkPreview?: Previewer;
 }
 
 export async function anthropicKey(deps: Pick<TurnDeps, "vault" | "cfg">): Promise<string | null> {
@@ -37,11 +39,18 @@ export async function anthropicKey(deps: Pick<TurnDeps, "vault" | "cfg">): Promi
 }
 
 async function attachmentBlocks(deps: TurnDeps, m: Message): Promise<BetaContentBlockParam[]> {
+  const ids = (m.attachments ?? []).slice(0, 4).map((a) => a.assetId);
+  // Pointing at an Inspiration reference: Sagal sees its picture too.
+  const refId = m.context?.type === "reference" ? Number(m.context.id) : NaN;
+  if (Number.isInteger(refId) && refId > 0) {
+    const { rows } = await deps.db.query<{ image_asset_id: number | null }>("SELECT image_asset_id FROM sagal.inspiration WHERE id = $1", [refId]);
+    if (rows[0]?.image_asset_id) ids.unshift(rows[0].image_asset_id);
+  }
   const blocks: BetaContentBlockParam[] = [];
-  for (const a of (m.attachments ?? []).slice(0, 4)) {
+  for (const assetId of ids.slice(0, 5)) {
     const { rows } = await deps.db.query<{ storage_key: string; content_type: string; size_bytes: number }>(
       "SELECT storage_key, content_type, size_bytes FROM sagal.media_assets WHERE id = $1",
-      [a.assetId],
+      [assetId],
     );
     const r = rows[0];
     if (!r || r.size_bytes > 5 * 1024 * 1024) continue;
@@ -98,7 +107,7 @@ export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessa
       }),
     };
     const callbacks = { onText: (text: string) => emit({ type: "delta", text }), onEffect: (effect: ToolEffect) => emit({ type: "effect", effect }) };
-    const tools = { db, conversationId, notifier: deps.notifier };
+    const tools = { db, conversationId, notifier: deps.notifier, storages: deps.storages, linkPreview: deps.linkPreview };
     let result = await brain.reply(
       { ...input, model: choice.model, allowEscalate: mode === "auto" && choice.tier === "everyday" && sabahMessage.via !== "voice" },
       tools,

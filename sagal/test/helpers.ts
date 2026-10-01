@@ -8,7 +8,9 @@ import { AuthService } from "../src/auth/service.js";
 import { testConfig, type Config } from "../src/config.js";
 import { migrate } from "../src/db/migrate.js";
 import { createPool, type Db } from "../src/db/pool.js";
+import type { Previewer } from "../src/domain/inspiration.js";
 import { Notifier } from "../src/domain/notify.js";
+import { LinkError } from "../src/inspiration/linkPreview.js";
 import { MemoryMailer } from "../src/email.js";
 import { buildServer } from "../src/http/server.js";
 import { Vault } from "../src/secrets/vault.js";
@@ -25,6 +27,11 @@ export async function freshDb(): Promise<Db> {
   await migrate(db);
   return db;
 }
+
+/** Tests never reach the internet: by default a link can't be read. */
+const noInternet: Previewer = async () => {
+  throw new LinkError("No internet in tests.");
+};
 
 /** A scripted stand-in for Claude: each reply can stream text and call Sagal's real tools. */
 export class FakeBrain implements Brain {
@@ -59,7 +66,7 @@ export interface TestApp {
   cookie: string;
 }
 
-export async function makeApp(opts: { cfg?: Record<string, string>; brain?: FakeBrain; fetchImpl?: typeof fetch; signIn?: boolean } = {}): Promise<TestApp> {
+export async function makeApp(opts: { cfg?: Record<string, string>; brain?: FakeBrain; fetchImpl?: typeof fetch; linkPreview?: Previewer; signIn?: boolean } = {}): Promise<TestApp> {
   const db = await freshDb();
   const cfg = testConfig({
     DATABASE_URL: TEST_DB,
@@ -73,7 +80,7 @@ export async function makeApp(opts: { cfg?: Record<string, string>; brain?: Fake
   const auth = new AuthService(db, cfg, mailer);
   const notifier = new Notifier(db, cfg, mailer, () => auth.ownerEmail());
   const brain = opts.brain ?? new FakeBrain(() => ({ text: "Got it." }));
-  const app = await buildServer({ db, cfg, vault, auth, storages: createStorages(cfg), mailer, notifier, brain: () => brain, fetchImpl: opts.fetchImpl });
+  const app = await buildServer({ db, cfg, vault, auth, storages: createStorages(cfg), mailer, notifier, brain: () => brain, fetchImpl: opts.fetchImpl, linkPreview: opts.linkPreview ?? noInternet });
   const t: TestApp = { app, db, cfg, vault, mailer, brain, cookie: "" };
   if (opts.signIn !== false) t.cookie = await signUp(t);
   return t;

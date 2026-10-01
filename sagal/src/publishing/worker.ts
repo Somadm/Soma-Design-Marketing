@@ -74,7 +74,7 @@ export async function processDuePosts(db: Db, notifier?: Notifier, now = new Dat
         await set("manual", `Ready to post by hand: ${why}. Caption and files are in the post.`);
         await createInboxItem(client, {
           kind: "Production problem", title: `Post “${post.title}” on ${post.platform} by hand`, dueLabel: "Due now",
-          body: `It's time for this post, and ${why}, so I can't send it myself. Copy the caption from Publishing, post it, then tell me it's done.`,
+          body: `It's time for this post, and ${why}, so I can't send it myself. Open it in Publishing: download the finished slides (or the LinkedIn PDF), copy the caption, post it, then tell me it's done.`,
           primaryLabel: "I've posted it", primaryAction: `post_by_hand:${post.id}`, secondaryLabel: "Open Publishing", secondaryAction: "go:publish",
           dedupeKey: `post-manual:${post.id}`, ref: { postId: post.id },
         }, notifier);

@@ -1,11 +1,14 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { assetLink, saveVoiceover, UploadError, voiceoverLink } from "../../domain/assets.js";
-import { addComment, CAPTION_LIMITS, createCarousel, getCarousel, listCarousels, ROLES, updateCarousel } from "../../domain/carousels.js";
+import { assetLink, listUsableImages, saveVoiceover, UploadError, voiceoverLink } from "../../domain/assets.js";
+import { addComment, assertUsableImages, CAPTION_LIMITS, createCarousel, getCarousel, listCarousels, ROLES, SlideImageError, updateCarousel } from "../../domain/carousels.js";
 import { addMessage } from "../../domain/conversations.js";
 import { listInbox, resolveByKey } from "../../domain/inbox.js";
 import { markPostedByHand } from "../../domain/posts.js";
+import { CATEGORIES, REACTIONS, refreshReference, saveReference, updateReference } from "../../domain/inspiration.js";
 import { hasSample } from "../../domain/sample.js";
+import { getSettings, setSetting } from "../../domain/settings.js";
+import { fetchPreview, LinkError } from "../../inspiration/linkPreview.js";
 import { createVideoJob, getVideoJob, listVideoJobs, setHandoffDone } from "../../domain/video.js";
 import { scriptText, scriptToSrt } from "../../integrations/production.js";
 import { HttpError, idParam, notFound, parse, type Deps } from "../deps.js";
@@ -18,6 +21,8 @@ const SlideBody = z.object({
   body: z.string().max(600),
   visual: z.string().max(200),
   theme: z.string().max(10),
+  imageAssetId: z.number().int().positive().nullable().optional(),
+  imageLayout: z.enum(["frame", "full"]).optional(),
 });
 const ScriptLine = z.object({ t: z.string().max(6), part: z.string().max(40), line: z.string().max(400) });
 
@@ -40,6 +45,14 @@ export async function contentRoutes(app: FastifyInstance, deps: Deps) {
 
   app.patch("/api/carousels/:id", async (req) => {
     const b = parse(z.object({ title: z.string().min(1).max(160).optional(), slides: z.array(SlideBody).max(12).optional(), captions: z.record(z.string(), z.string()).optional() }), req.body);
+    if (b.slides) {
+      try {
+        await assertUsableImages(db, b.slides);
+      } catch (err) {
+        if (err instanceof SlideImageError) throw new HttpError(400, err.message);
+        throw err;
+      }
+    }
     await updateCarousel(db, idParam(req), b);
     return { ok: true };
   });
@@ -47,6 +60,27 @@ export async function contentRoutes(app: FastifyInstance, deps: Deps) {
   app.post("/api/carousels/:id/comments", async (req) => {
     const b = parse(z.object({ slide: z.number().int().min(0).max(11), text: z.string().min(1).max(2000) }), req.body);
     return { comment: await addComment(db, idParam(req), b.slide, "sabah", b.text) };
+  });
+
+  // ───── Images for slides (library + same-origin bytes for canvas export) ─────
+  app.get("/api/assets/images", async () => ({
+    images: (await listUsableImages(db)).map((r) => ({ ...r, url: `/api/assets/${r.id}/raw` })),
+  }));
+
+  /**
+   * The file itself, from private storage, behind the session cookie. Same-origin, so the
+   * browser can draw it onto a canvas when exporting finished designs.
+   */
+  app.get("/api/assets/:id/raw", async (req, reply) => {
+    const { rows } = await db.query<{ storage_key: string; content_type: string; filename: string }>(
+      "SELECT storage_key, content_type, filename FROM sagal.media_assets WHERE id = $1 AND kind <> 'conversation_audio'",
+      [idParam(req)],
+    );
+    if (!rows[0]) return notFound(reply);
+    // Uploaded files never run as pages on Sagal's origin (an SVG with a script, say).
+    reply.type(rows[0].content_type).header("cache-control", "private, max-age=3600")
+      .header("x-content-type-options", "nosniff").header("content-security-policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+    return reply.send(await storages.media.read(rows[0].storage_key));
   });
 
   // ───── Video studio ─────
@@ -149,26 +183,48 @@ export async function contentRoutes(app: FastifyInstance, deps: Deps) {
     return { ok: true };
   });
 
-  // ───── Inspiration ─────
+  // ───── Inspiration: Sabah's taste board ─────
+  const previewer = deps.linkPreview ?? fetchPreview;
   app.get("/api/inspiration", async () => {
-    const { rows } = await db.query("SELECT * FROM sagal.inspiration ORDER BY id");
-    return { items: await Promise.all(rows.map(async (r) => ({ ...r, imageUrl: r.image_asset_id ? await assetLink(db, storages, r.image_asset_id) : null }))) };
+    const { rows } = await db.query("SELECT * FROM sagal.inspiration ORDER BY CASE reaction WHEN 'love' THEN 0 WHEN 'like' THEN 1 ELSE 2 END, id DESC");
+    const { taste } = await getSettings(db);
+    return {
+      taste,
+      categories: CATEGORIES,
+      items: await Promise.all(rows.map(async (r) => ({ ...r, imageUrl: r.image_asset_id ? await assetLink(db, storages, r.image_asset_id) : null }))),
+    };
   });
 
+  const Reaction = z.enum(REACTIONS);
   const InspoBody = z.object({
-    category: z.string().min(1).max(60),
-    title: z.string().min(1).max(160),
-    source: z.string().max(300).default(""),
-    noticed: z.string().max(800).default(""),
-    idea: z.string().max(400).default(""),
-    private: z.boolean().default(false),
+    url: z.string().max(2000).nullable().optional(),
+    category: z.string().trim().min(1).max(60).optional(),
+    title: z.string().max(160).optional(),
+    source: z.string().max(300).optional(),
+    why: z.string().max(800).optional(),
+    noticed: z.string().max(800).optional(),
+    idea: z.string().max(400).optional(),
+    reaction: Reaction.optional(),
+    private: z.boolean().optional(),
   });
   app.post("/api/inspiration", async (req) => {
     const b = parse(InspoBody, req.body);
-    const { rows } = await db.query("INSERT INTO sagal.inspiration (category, title, source, noticed, idea, private) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id", [
-      b.category, b.title, b.source, b.noticed, b.idea, b.private,
-    ]);
-    return { id: rows[0].id };
+    try {
+      const r = await saveReference(db, storages, b, previewer);
+      if (b.source) await db.query("UPDATE sagal.inspiration SET source = $2 WHERE id = $1", [r.id, b.source]);
+      return r;
+    } catch (err) {
+      if (err instanceof LinkError) throw new HttpError(400, err.message);
+      throw err;
+    }
+  });
+  app.patch("/api/inspiration/:id", async (req, reply) => {
+    const b = parse(InspoBody.omit({ url: true, source: true }).extend({ title: z.string().trim().min(1).max(160).optional() }), req.body);
+    return (await updateReference(db, idParam(req), b)) ? { ok: true } : notFound(reply);
+  });
+  app.post("/api/inspiration/:id/refresh", async (req, reply) => {
+    const r = await refreshReference(db, storages, idParam(req), previewer);
+    return r.found ? { note: r.note } : notFound(reply);
   });
   app.delete("/api/inspiration/:id", async (req) => {
     await db.query("DELETE FROM sagal.inspiration WHERE id = $1", [idParam(req)]);
@@ -179,7 +235,12 @@ export async function contentRoutes(app: FastifyInstance, deps: Deps) {
     const { rows } = await db.query<{ private: boolean }>("SELECT private FROM sagal.inspiration WHERE id = $1", [id]);
     if (!rows[0]) throw new HttpError(404, "Not found.");
     const a = await uploadFrom(req, deps, "inspiration", { doNotPublish: true });
-    await db.query("UPDATE sagal.inspiration SET image_asset_id = $2 WHERE id = $1", [id, a.id]);
+    await db.query("UPDATE sagal.inspiration SET image_asset_id = $2, updated_at = now() WHERE id = $1", [id, a.id]);
+    return { ok: true };
+  });
+  app.patch("/api/settings/taste", async (req) => {
+    const b = parse(z.object({ love: z.string().max(2000), avoid: z.string().max(2000) }), req.body);
+    await setSetting(db, "taste", b);
     return { ok: true };
   });
 

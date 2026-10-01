@@ -5,6 +5,8 @@ export type BrainMode = "auto" | "everyday" | "deep";
 export interface Settings {
   /** auto: Sonnet by default, Opus when the work needs it. everyday: always Sonnet. deep: always Opus. */
   brain: { mode: BrainMode };
+  /** Sabah's taste in her own words; Sagal reads it with the Inspiration board every turn. */
+  taste: { love: string; avoid: string };
   notifications: { inbox: boolean; fail: boolean; daily: boolean; published: boolean; quiet: boolean };
   voice: { voice: string; speed: string; transcript: boolean };
   appearance: { portraitAssetId: number | null; approved: boolean };
@@ -15,6 +17,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   brain: { mode: "auto" },
+  taste: { love: "", avoid: "" },
   notifications: { inbox: true, fail: true, daily: true, published: false, quiet: true },
   voice: { voice: "Warm · lightly Brooklyn", speed: "1.0×", transcript: true },
   appearance: { portraitAssetId: null, approved: false },

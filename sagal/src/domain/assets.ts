@@ -68,3 +68,13 @@ export async function voiceoverLink(db: DbClient, storages: Storages, id: number
   const { rows } = await db.query<{ storage_key: string; filename: string }>("SELECT storage_key, filename FROM sagal.voiceovers WHERE id = $1", [id]);
   return rows[0] ? storages.voiceovers.signedUrl(rows[0].storage_key, storageFilename(rows[0].filename)) : null;
 }
+
+/** Images that can go on slides: uploads and brand assets, newest first. */
+export async function listUsableImages(db: DbClient, limit = 60) {
+  const { rows } = await db.query<{ id: number; kind: string; filename: string; label: string | null; created_at: Date }>(
+    `SELECT id, kind, filename, label, created_at FROM sagal.media_assets
+     WHERE kind IN ('image','brand') AND NOT do_not_publish ORDER BY id DESC LIMIT $1`,
+    [limit],
+  );
+  return rows;
+}

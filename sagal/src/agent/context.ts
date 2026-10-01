@@ -1,7 +1,9 @@
 import type { BetaContentBlockParam, BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type { DbClient } from "../db/pool.js";
 import type { Message } from "../domain/conversations.js";
+import { listUsableImages } from "../domain/assets.js";
 import { memoryDigest } from "../domain/memory.js";
+import { tasteDigest } from "../domain/inspiration.js";
 import { listIdeas, weekDays } from "../domain/plan.js";
 import { listPosts } from "../domain/posts.js";
 import { integrationStates, SERVICES } from "../integrations/registry.js";
@@ -51,6 +53,8 @@ export async function buildContext(db: DbClient, opts: { spoken: boolean; conver
     db.query<{ id: number; title: string; draft: number }>("SELECT id, title, draft FROM sagal.carousels ORDER BY updated_at DESC LIMIT 8"),
     db.query<{ id: number; title: string; voiceover_id: number | null }>("SELECT id, title, voiceover_id FROM sagal.video_jobs ORDER BY updated_at DESC LIMIT 5"),
   ]);
+  const images = await listUsableImages(db, 20);
+  const taste = await tasteDigest(db);
   const agreed = ideas.filter((i) => i.status === "agreed");
   const board = ideas.filter((i) => i.status === "board");
   const lines = [
@@ -60,6 +64,11 @@ export async function buildContext(db: DbClient, opts: { spoken: boolean; conver
     "<memory>",
     memory,
     "</memory>",
+    "",
+    "<taste>",
+    "Sabah's Inspiration board: what she loves and what's not for Soma. Let it shape your ideas, layouts, colours and tone. Learn the why; never copy the work.",
+    taste,
+    "</taste>",
     "",
     `Publishing authorisation: ${auth.mode === "plan" ? "publish within the approved plan" : "review each finished post"}; channels: ${auth.channels.join(", ") || "none"}; ${auth.paused ? "ALL PUBLISHING IS PAUSED" : "not paused"}; production spend €${spent.toFixed(2)} of €${auth.spend_limit_eur} this month.`,
     `Connections: ${SERVICES.map((s) => `${s.name} ${(states[s.id]?.state ?? "not_connected").replace("_", " ")}`).join("; ")}. Nothing publishes automatically until a platform is connected: due posts are handed to Sabah to post by hand.`,
@@ -72,6 +81,8 @@ export async function buildContext(db: DbClient, opts: { spoken: boolean; conver
     ...(board.length ? board.map((i) => `- [idea ${i.id}] ${i.title} (${i.format})`) : ["- empty"]),
     "Carousels:",
     ...(carousels.rows.length ? carousels.rows.map((c) => `- [carousel ${c.id}] ${c.title} (draft ${c.draft})`) : ["- none"]),
+    "Images Sabah has uploaded that can go on slides (use image_id):",
+    ...(images.length ? images.map((i) => `- [image ${i.id}] ${i.label ? `${i.label} · ` : ""}${i.filename} (${i.kind === "brand" ? "brand asset" : "upload"}, ${helsinkiDate(i.created_at)})`) : ["- none yet"]),
     "Video scripts:",
     ...(videos.rows.length ? videos.rows.map((v) => `- [video ${v.id}] ${v.title}${v.voiceover_id ? " (voiceover received)" : " (waiting for Sabah's voiceover)"}`) : ["- none"]),
     "Needs Sabah (open):",
@@ -87,7 +98,7 @@ function userText(m: Message): string {
   if (m.context?.label) parts.push(`[Re: ${m.context.label}]`);
   if (m.via === "voice_note") parts.push(m.text ? `[Voice note, transcribed] ${m.text}` : "[Voice note with no transcript: speech-to-text isn't connected, so Sagal can't hear it yet.]");
   else if (m.text) parts.push(m.via === "voice" ? `[Spoken] ${m.text}` : m.text);
-  if (m.attachments?.length) parts.push(`[Attached: ${m.attachments.map((a) => `${a.kind} “${a.name}”`).join(", ")}]`);
+  if (m.attachments?.length) parts.push(`[Attached: ${m.attachments.map((a) => `${a.kind} “${a.name}”${a.kind === "image" ? ` (image ${a.assetId})` : ""}`).join(", ")}]`);
   return parts.join("\n") || "(empty message)";
 }
 

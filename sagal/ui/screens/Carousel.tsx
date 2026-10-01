@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api";
-import { Empty, Kicker, LoadError, Loading, MarkS, Pills, Tag, THEMES, useAction, useApp, useLoad, useRouter } from "../lib";
+import { Empty, Kicker, LoadError, Loading, MarkS, Pills, Tag, THEMES, useAction, useApp, useFilePicker, useLoad, useRouter } from "../lib";
+import { downloadPdf, downloadSlide, downloadZip } from "../export/render";
+import { ImagePicker } from "./ImagePicker";
 import { CROPS, MiniSlide, SlideView, type Carousel, type Crop, type Slide } from "../slides";
 
 const CAP_PLATS = ["Instagram", "Facebook", "TikTok", "YouTube Shorts", "LinkedIn"] as const;
@@ -74,16 +76,48 @@ function Studio({ c, roles, limits, others, reload }: { c: Carousel; roles: stri
     }, 600);
   };
   useEffect(() => () => clearTimeout(timer.current), []);
-  const edit = (field: keyof Slide, v: string) => {
-    const next = slides.map((s, n) => (n === i ? { ...s, [field]: v } : s));
+  const patchSlide = (p: Partial<Slide>) => {
+    const next = slides.map((s, n) => (n === i ? { ...s, ...p } : s));
     setSlides(next);
     queueSave({ slides: next, captions });
   };
+  const edit = (field: keyof Slide, v: string) => patchSlide({ [field]: v } as Partial<Slide>);
+  const [picking, setPicking] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const { toast } = useApp();
+  const upload = useFilePicker(
+    (f) =>
+      run(async () => {
+        const a = await api.upload<{ id: number }>("/api/uploads/image", f);
+        patchSlide({ imageAssetId: a.id, imageLayout: cur.imageLayout ?? "frame" });
+      }, "Image added to the slide."),
+    "image/*",
+  );
+  const exportAs = async (label: string, fn: () => Promise<void>) => {
+    setExporting(label);
+    try {
+      await fn();
+    } catch (e) {
+      toast((e as Error).message, true);
+    } finally {
+      setExporting(null);
+    }
+  };
+  const missing = slides.map((s, n) => (s.visual && !s.imageAssetId ? n + 1 : 0)).filter(Boolean);
   const cap = captions[capPlat] ?? "";
   const comments = c.comments.filter((x) => x.slide_index === i);
 
   return (
     <div className="scroll">
+      {picking && (
+        <ImagePicker
+          onClose={() => setPicking(false)}
+          onPick={(id) => {
+            patchSlide({ imageAssetId: id, imageLayout: cur.imageLayout ?? "frame" });
+            setPicking(false);
+          }}
+        />
+      )}
       <div className="page w1480" style={{ gap: 22, paddingBottom: 60 }}>
         <div className="head">
           <div>
@@ -100,6 +134,23 @@ function Studio({ c, roles, limits, others, reload }: { c: Carousel; roles: stri
             )}
             <button className="btn blue" onClick={() => discuss({ type: "slide", id: `${c.id}:${i}`, label: `Slide ${i + 1} · ${cur.role}` })}>Discuss slide {i + 1} with Sagal</button>
           </div>
+        </div>
+        <div className="row g8 wrap" style={{ background: "var(--surface)", borderRadius: 16, padding: "12px 16px" }}>
+          <span className="kicker sm" style={{ marginRight: 4 }}>Download · {crop}</span>
+          <button className="btn ink sm" disabled={!!exporting} onClick={() => exportAs("zip", () => downloadZip(c.title, slides, crop, captions))}>
+            {exporting === "zip" ? "Preparing…" : `All slides (ZIP · ${slides.length} PNG + captions)`}
+          </button>
+          <button className="btn ghost sm" disabled={!!exporting} onClick={() => exportAs("png", () => downloadSlide(c.title, slides, i, crop))}>
+            {exporting === "png" ? "Preparing…" : `Slide ${i + 1} (PNG)`}
+          </button>
+          <button className="btn ghost sm" disabled={!!exporting} onClick={() => exportAs("pdf", () => downloadPdf(c.title, slides))}>
+            {exporting === "pdf" ? "Preparing…" : "LinkedIn PDF"}
+          </button>
+          <span className="xs muted grow" style={{ minWidth: 200 }}>
+            {missing.length
+              ? `Slide${missing.length > 1 ? "s" : ""} ${missing.join(", ")} still ${missing.length > 1 ? "have" : "has"} an image note but no image.`
+              : "Exact sizes: 4:5 = 1080 × 1350, 1:1 = 1080 × 1080, 9:16 = 1080 × 1920. Pick the size with the buttons above the preview."}
+          </span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${slides.length},minmax(0,1fr))`, gap: 4 }} aria-label="Story progression">
           {slides.map((s, n) => (
@@ -147,7 +198,28 @@ function Studio({ c, roles, limits, others, reload }: { c: Carousel; roles: stri
               <label className="field">Kicker<input value={cur.kicker} onChange={(e) => edit("kicker", e.target.value)} /></label>
               <label className="field">Story role<select value={cur.role} onChange={(e) => edit("role", e.target.value)}>{roles.map((r) => <option key={r}>{r}</option>)}</select></label>
             </div>
-            <label className="field">Visual<input placeholder="None: type only" value={cur.visual} onChange={(e) => edit("visual", e.target.value)} /></label>
+            <div className="stack g8">
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Image</div>
+              {cur.imageAssetId ? (
+                <div className="row g10" style={{ alignItems: "flex-start" }}>
+                  <img src={`/api/assets/${cur.imageAssetId}/raw`} alt="" style={{ width: 84, height: 84, objectFit: "cover", borderRadius: 12, border: "1px solid var(--line)" }} />
+                  <div className="stack g6 grow">
+                    <Pills sm options={["frame", "full"] as const} value={cur.imageLayout ?? "frame"} onChange={(v) => patchSlide({ imageLayout: v })} label={(v) => (v === "frame" ? "In a frame" : "Full background")} />
+                    <div className="row g8 wrap">
+                      <button className="btn link" style={{ fontSize: 12.5 }} onClick={() => setPicking(true)}>Change</button>
+                      <button className="btn link" style={{ fontSize: 12.5 }} onClick={() => patchSlide({ imageAssetId: null })}>Remove</button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="row g8 wrap">
+                  <button className="btn ghost sm" onClick={upload.open}>Upload image</button>
+                  <button className="btn ghost sm" onClick={() => setPicking(true)}>Choose from your images</button>
+                </div>
+              )}
+              {upload.input}
+            </div>
+            <label className="field">Image note<input placeholder="Optional: describe an image still to come" value={cur.visual} onChange={(e) => edit("visual", e.target.value)} /></label>
             <div className="stack g8">
               <div style={{ fontSize: 13, fontWeight: 600 }}>Look</div>
               <div className="row g8">

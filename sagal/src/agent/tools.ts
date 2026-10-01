@@ -1,18 +1,23 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { DbClient } from "../db/pool.js";
-import { createCarousel, getCarousel, updateSlide, ROLES, THEMES } from "../domain/carousels.js";
+import { createCarousel, getCarousel, SlideImageError, updateSlide, ROLES, THEMES } from "../domain/carousels.js";
 import { createInboxItem } from "../domain/inbox.js";
+import { CATEGORIES, REACTIONS, saveReference, updateReference, type Previewer } from "../domain/inspiration.js";
 import { OwnershipError, writeMemory } from "../domain/memory.js";
 import type { Notifier } from "../domain/notify.js";
 import { createIdea, FORMATS } from "../domain/plan.js";
 import { createVideoJob } from "../domain/video.js";
+import { LinkError } from "../inspiration/linkPreview.js";
 import { CHANNELS } from "../publishing/permissions.js";
+import type { Storages } from "../storage/storage.js";
 
 export interface ToolContext {
   db: DbClient;
   conversationId: number;
   notifier?: Notifier;
+  storages?: Storages;
+  linkPreview?: Previewer;
 }
 
 export interface ToolEffect {
@@ -35,6 +40,8 @@ const Slide = z.object({
   supporting_line: z.string().max(600).optional(),
   visual: z.string().max(200).optional(),
   look: z.enum(THEMES as [string, ...string[]]).optional(),
+  image_id: z.number().int().positive().optional().describe("An image from the image list in your context, shown on this slide"),
+  image_layout: z.enum(["frame", "full"]).optional().describe("frame: in a box above the headline (default). full: fills the slide behind the text"),
 });
 
 const schemas = {
@@ -60,6 +67,8 @@ const schemas = {
     supporting_line: z.string().max(600).optional(),
     kicker: z.string().max(80).optional(),
     visual: z.string().max(200).optional(),
+    image_id: z.number().int().positive().nullable().optional().describe("Image from your image list; null removes the slide's image"),
+    image_layout: z.enum(["frame", "full"]).optional(),
   }),
   write_video_script: z.object({
     title: z.string().min(1).max(160),
@@ -83,20 +92,38 @@ const schemas = {
   }),
   propose_for_paid: z.object({ title: z.string().min(1).max(200), evidence: z.string().min(1).max(300) }),
   show_this_week: z.object({}),
+  save_reference: z.object({
+    url: z.string().url().max(2000).optional().describe("The link Sabah shared (Pinterest, Instagram, TikTok, any page)"),
+    title: z.string().max(160).optional().describe("Leave out to use the page's own title"),
+    category: z.string().max(60).optional().describe(`One of: ${CATEGORIES.join(", ")} (or a short new one)`),
+    reaction: z.enum(REACTIONS).optional().describe("How Sabah feels about it: love, like or not_for_us"),
+    why: z.string().max(800).optional().describe("What Sabah said she likes or dislikes about it, in her words"),
+    noticed: z.string().max(800).optional().describe("What you notice that's worth learning from"),
+  }),
+  update_reference: z.object({
+    reference_id: z.number().int(),
+    reaction: z.enum(REACTIONS).optional(),
+    why: z.string().max(800).optional().describe("Sabah's own reason, only from what she said"),
+    noticed: z.string().max(800).optional(),
+    idea: z.string().max(400).optional().describe("An original Soma idea it sparks"),
+    category: z.string().max(60).optional(),
+  }),
 };
 
 export type ToolName = keyof typeof schemas;
 
 const desc: Record<ToolName, string> = {
   create_idea: "Put a new idea on the idea board in Plan together. Sabah decides whether it goes into the plan. Use it when an idea is concrete enough to discuss (story, audience, purpose, format, platforms).",
-  create_carousel: "Draft a carousel (usually 5–8 slides, one idea per slide, roles from Hook to Close) and open it in the workspace. Optionally include captions keyed by platform name.",
-  update_slide: "Change one slide of an existing carousel (only the fields you pass). The workspace updates immediately.",
+  create_carousel: "Draft a carousel (usually 5–8 slides, one idea per slide, roles from Hook to Close) and open it in the workspace. A single-image post is a carousel with one slide. Put Sabah's uploaded images on slides with image_id (from the image list in your context); use visual only to describe an image that still needs to be supplied. Optionally include captions keyed by platform name.",
+  update_slide: "Change one slide of an existing carousel (only the fields you pass), including placing or removing an image (image_id from your image list, null to remove). The workspace updates immediately.",
   write_video_script: "Write a timed script for an avatar video that Sabah records in her own voice. Opens in the workspace; Sabah is asked for her voiceover.",
   offer_choices: "Show two to four short option buttons under your reply (optionally with a quoted line, e.g. a proposed headline). Sabah's pick comes back as her next message.",
   ask_sabah: "Add an item to Needs Sabah for something that needs her decision outside this chat, or anything outside the agreed plan. Keep the explanation plain and short and say which option you'd pick.",
   remember: "Save something to the memory Sagal and Bilan share: a business fact Sabah told you, an approved sentence (language), a creative preference, or a note. Never overwrite Sabah's own entries.",
   propose_for_paid: "Propose an organic post to Bilan for a paid test. It goes to Sabah first in Results & Bilan; nothing goes to Bilan without her.",
   show_this_week: "Show the agreed plan for this week in the workspace.",
+  save_reference: "Save a link or idea Sabah shares to her Inspiration board, so you both learn her taste from it. Use it when she shares a link she likes (or dislikes), or asks you to keep something for inspiration. The app reads the page's title and picture itself.",
+  update_reference: "Fill in or correct a reference on the Inspiration board: what you noticed, an original Soma idea it sparks, or Sabah's reaction and reason when she tells you.",
 };
 
 /** Only offered on Sonnet in automatic mode: hand this turn to Opus. */
@@ -144,13 +171,20 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         const c = parsed.data as z.infer<typeof schemas.create_carousel>;
         const id = await createCarousel(db, {
           title: c.title, project: c.project, ideaId: c.idea_id ?? null, captions: c.captions,
-          slides: c.slides.map((s) => ({ role: s.role, kicker: s.kicker, head: s.headline, body: s.supporting_line, visual: s.visual, theme: s.look })),
+          slides: c.slides.map((s) => ({ role: s.role, kicker: s.kicker, head: s.headline, body: s.supporting_line, visual: s.visual, theme: s.look, imageAssetId: s.image_id ?? null, imageLayout: s.image_layout })),
         });
         return { result: `Carousel ${id} created with ${c.slides.length} slides and opened in the workspace.`, effect: { card: { type: "carousel", id, title: c.title, sub: `${c.slides.length} slides · 4:5 · draft 1` } } };
       }
       case "update_slide": {
         const u = parsed.data as z.infer<typeof schemas.update_slide>;
-        const s = await updateSlide(db, u.carousel_id, u.slide_number - 1, { head: u.headline, body: u.supporting_line, kicker: u.kicker, visual: u.visual });
+        const s = await updateSlide(db, u.carousel_id, u.slide_number - 1, {
+          head: u.headline,
+          body: u.supporting_line,
+          kicker: u.kicker,
+          visual: u.visual,
+          imageAssetId: u.image_id === undefined ? undefined : u.image_id,
+          imageLayout: u.image_layout,
+        });
         const c = await getCarousel(db, u.carousel_id);
         return {
           result: `Slide ${u.slide_number} updated: “${s.head}”.`,
@@ -196,9 +230,20 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       }
       case "show_this_week":
         return { result: "Showing this week.", effect: { card: { type: "week", title: "This week", sub: "The agreed plan · Europe/Helsinki" } } };
+      case "save_reference": {
+        const r = parsed.data as z.infer<typeof schemas.save_reference>;
+        if (!ctx.storages) return { result: "Saving references isn't available here.", isError: true };
+        const saved = await saveReference(db, ctx.storages, { ...r, url: r.url ?? null }, ctx.linkPreview);
+        return { result: `Saved to the Inspiration board as [reference ${saved.id}].${saved.note ? ` ${saved.note}` : ""}` };
+      }
+      case "update_reference": {
+        const r = parsed.data as z.infer<typeof schemas.update_reference>;
+        const { reference_id, ...patch } = r;
+        return (await updateReference(db, reference_id, patch)) ? { result: `Reference ${reference_id} updated.` } : { result: "No reference with that id.", isError: true };
+      }
     }
   } catch (err) {
-    if (err instanceof OwnershipError) return { result: err.message, isError: true };
+    if (err instanceof OwnershipError || err instanceof SlideImageError || err instanceof LinkError) return { result: err.message, isError: true };
     return { result: `Tool failed: ${(err as Error).message}`, isError: true };
   }
   return { result: "No-op" };

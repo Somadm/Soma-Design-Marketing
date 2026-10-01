@@ -4,6 +4,7 @@ import type { Brain } from "../agent/brain.js";
 import type { AuthService } from "../auth/service.js";
 import type { Config } from "../config.js";
 import type { Db } from "../db/pool.js";
+import type { Previewer } from "../domain/inspiration.js";
 import type { Notifier } from "../domain/notify.js";
 import type { Mailer } from "../email.js";
 import type { Vault } from "../secrets/vault.js";
@@ -19,6 +20,8 @@ export interface Deps {
   notifier: Notifier;
   brain?: (apiKey: string) => Brain;
   fetchImpl?: typeof fetch;
+  /** Tests replace the link reader so they never touch the internet. */
+  linkPreview?: Previewer;
 }
 
 export const COOKIE = "sagal_session";

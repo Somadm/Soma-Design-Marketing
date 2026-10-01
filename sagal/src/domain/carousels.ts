@@ -11,6 +11,10 @@ export interface Slide {
   body: string;
   visual: string;
   theme: string;
+  /** An uploaded image (media_assets id) shown on the slide. */
+  imageAssetId: number | null;
+  /** "frame": in a box above the headline. "full": fills the slide, text on top. */
+  imageLayout: "frame" | "full";
 }
 
 export function cleanSlide(s: Partial<Slide>, i = 0): Slide {
@@ -22,7 +26,31 @@ export function cleanSlide(s: Partial<Slide>, i = 0): Slide {
     body: str(s.body, 600),
     visual: str(s.visual, 200),
     theme: THEMES.includes(s.theme ?? "") ? s.theme! : THEMES[i % 2 ? 1 : 0],
+    imageAssetId: Number.isInteger(s.imageAssetId) && (s.imageAssetId as number) > 0 ? (s.imageAssetId as number) : null,
+    imageLayout: s.imageLayout === "full" ? "full" : "frame",
   };
+}
+
+export class SlideImageError extends Error {}
+
+/**
+ * Images that may appear on a post: uploaded images and brand assets. Private
+ * references (inspiration, portraits, anything marked not-for-publish) are refused.
+ */
+export async function assertUsableImages(db: DbClient, slides: Partial<Slide>[]) {
+  const ids = [...new Set(slides.map((s) => s.imageAssetId).filter((x): x is number => Number.isInteger(x) && (x as number) > 0))];
+  if (!ids.length) return;
+  const { rows } = await db.query<{ id: number; kind: string; do_not_publish: boolean }>(
+    "SELECT id, kind, do_not_publish FROM sagal.media_assets WHERE id = ANY($1)",
+    [ids],
+  );
+  for (const id of ids) {
+    const r = rows.find((x) => x.id === id);
+    if (!r) throw new SlideImageError(`Image ${id} doesn't exist.`);
+    if (!["image", "brand"].includes(r.kind) || r.do_not_publish) {
+      throw new SlideImageError(`Image ${id} is a private reference and can't go on a post.`);
+    }
+  }
 }
 
 export async function listCarousels(db: DbClient) {
@@ -42,11 +70,20 @@ export async function createCarousel(
   c: { title: string; project?: string; ideaId?: number | null; slides: Partial<Slide>[]; captions?: Record<string, string> },
   sample = false,
 ) {
+  await assertUsableImages(db, c.slides);
   const slides = c.slides.slice(0, 12).map(cleanSlide);
   const { rows } = await db.query<{ id: number }>(
     "INSERT INTO sagal.carousels (title, project, idea_id, slides, captions, sample) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
     [c.title, c.project ?? "", c.ideaId ?? null, JSON.stringify(slides), JSON.stringify(c.captions ?? {}), sample],
   );
+  // A design made after the idea was planned: attach it to that idea's posts still to go out.
+  if (c.ideaId) {
+    await db.query(
+      `UPDATE sagal.posts SET carousel_id = $1, caption = CASE WHEN caption = '' THEN COALESCE($3::jsonb ->> platform, '') ELSE caption END
+       WHERE idea_id = $2 AND kind <> 'video' AND status IN ('scheduled','paused','manual','failed')`,
+      [rows[0].id, c.ideaId, JSON.stringify(c.captions ?? {})],
+    );
+  }
   return rows[0].id;
 }
 
@@ -69,6 +106,7 @@ export async function updateCarousel(db: DbClient, id: number, patch: { title?: 
 }
 
 export async function updateSlide(db: DbClient, id: number, index: number, patch: Partial<Slide>) {
+  await assertUsableImages(db, [patch]);
   const c = await getCarousel(db, id);
   if (!c) throw new Error("Carousel not found.");
   const slides = c.slides as Slide[];
