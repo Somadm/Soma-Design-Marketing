@@ -1,4 +1,4 @@
-# Render Blueprint: one always-on service (API + UI + worker) and Postgres.
+# Render Blueprint: Bilan (API + UI + worker), Sagal (API + UI + publishing worker) and one shared Postgres.
 # The worker must run 24/7: free/sleeping instances would stop the 42-day schedule.
 # Postgres can instead be Supabase Pro (pg_cron + pgvector): set DATABASE_URL to it
 # and remove the database block. See bilan-knowledge/README.md.
@@ -33,6 +33,46 @@ services:
       - key: ALERT_FROM_EMAIL
         sync: false
       - key: APP_URL
+        sync: false
+
+  # Sagal: creative producer and organic social. Shares the database with Bilan so both
+  # read the same memory (schema `shared`); Sagal's own tables live in schema `sagal`.
+  # Using Supabase instead? Set DATABASE_URL on BOTH services to Supabase's
+  # "Session pooler" connection string. Setup guide: sagal/docs/SETUP.md
+  - type: web
+    name: sagal
+    runtime: docker
+    dockerContext: ./sagal
+    dockerfilePath: ./sagal/Dockerfile
+    buildFilter:
+      paths: ["sagal/**"]
+    plan: starter
+    numInstances: 1
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bilan-knowledge-db
+          property: connectionString
+      - key: SECRETS_MASTER_KEY
+        generateValue: true
+      - key: DEPLOYMENT_ENV
+        value: production
+      - key: STORAGE_DRIVER
+        value: s3
+      - key: OWNER_EMAIL
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
         sync: false
 
 databases:

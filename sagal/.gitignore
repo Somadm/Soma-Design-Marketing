@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+*.log
+.media/
+public/app.js
+public/app.js.map
