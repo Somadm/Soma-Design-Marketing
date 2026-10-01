@@ -10,7 +10,10 @@ import type { Storages } from "../storage/storage.js";
 import { ClaudeBrain, BrainError, type Brain } from "./brain.js";
 import { buildContext, focusText, toHistory } from "./context.js";
 import type { ToolEffect } from "./tools.js";
-import { getSettings } from "../domain/settings.js";
+import { getSettings, setSetting } from "../domain/settings.js";
+
+export const WEB_UNAVAILABLE =
+  "Sagal couldn't search the web: your Claude account doesn't allow web search yet, so the switch is off again. Allow web search for your organisation in the Claude Console (where you made the API key), then switch it back on in Memory & settings → Sagal's thinking.";
 import { chooseModel, TIER_LABEL } from "./models.js";
 
 export type TurnEvent =
@@ -87,7 +90,10 @@ export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessa
   }
   const conv = await getConversation(db, conversationId);
   if (!conv) return fail("Conversation not found.");
-  const mode = (await getSettings(db)).brain.mode;
+  const settings = await getSettings(db);
+  const mode = settings.brain.mode;
+  // Live voice stays fast: no web searches mid-conversation.
+  const web = settings.web.enabled && sabahMessage.via !== "voice";
   let choice = chooseModel(deps.cfg, mode, {
     text: sabahMessage.text,
     via: sabahMessage.via,
@@ -110,7 +116,7 @@ export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessa
     const callbacks = { onText: (text: string) => emit({ type: "delta", text }), onEffect: (effect: ToolEffect) => emit({ type: "effect", effect }) };
     const tools = { db, conversationId, notifier: deps.notifier, storages: deps.storages, linkPreview: deps.linkPreview };
     let result = await brain.reply(
-      { ...input, model: choice.model, allowEscalate: mode === "auto" && choice.tier === "everyday" && sabahMessage.via !== "voice" },
+      { ...input, web, model: choice.model, allowEscalate: mode === "auto" && choice.tier === "everyday" && sabahMessage.via !== "voice" },
       tools,
       callbacks,
       signal,
@@ -119,7 +125,12 @@ export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessa
       // Sagal decided this needs her deeper mode: start the reply again on Opus.
       choice = { tier: "deep", model: deps.cfg.SAGAL_MODEL_DEEP, reason: result.escalate };
       emit({ type: "restart", model: TIER_LABEL.deep, tier: "deep", reason: choice.reason });
-      result = await brain.reply({ ...input, model: choice.model, allowEscalate: false }, tools, callbacks, signal);
+      result = await brain.reply({ ...input, web, model: choice.model, allowEscalate: false }, tools, callbacks, signal);
+    }
+    if (result.webUnavailable) {
+      // Claude refused the web tools for this account: switch them off and say why, once.
+      await setSetting(db, "web", { enabled: false, lastError: WEB_UNAVAILABLE });
+      await addMessage(db, conversationId, { sender: "system", text: WEB_UNAVAILABLE });
     }
     await db.query("UPDATE sagal.messages SET status = 'sent', error = NULL WHERE id = $1", [sabahMessage.id]);
     const cards = result.effects.filter((e) => e.card).map((e) => e.card!);

@@ -22,6 +22,8 @@ export async function memoryRoutes(app: FastifyInstance, deps: Deps) {
       sample: await hasSample(db),
       email: await deps.auth.ownerEmail(),
       brainMode: s.brain.mode,
+      webSearch: s.web.enabled,
+      webError: s.web.lastError ?? null,
       portraitUrl: s.appearance.approved && s.appearance.portraitAssetId ? await assetLink(db, storages, s.appearance.portraitAssetId) : null,
     };
   });
@@ -94,6 +96,12 @@ export async function memoryRoutes(app: FastifyInstance, deps: Deps) {
   app.post("/api/routine/run", async () => {
     void maybeRunRoutine({ db, cfg: deps.cfg, vault: deps.vault, storages: deps.storages, notifier: deps.notifier, brain: deps.brain, linkPreview: deps.linkPreview }, { force: true })
       .catch((err) => app.log.error(err));
+    return { ok: true };
+  });
+
+  app.patch("/api/settings/web", async (req) => {
+    const b = parse(z.object({ enabled: z.boolean() }), req.body);
+    await setSetting(db, "web", { enabled: b.enabled, lastError: null });
     return { ok: true };
   });
 

@@ -36,7 +36,7 @@ const noInternet: Previewer = async () => {
 /** A scripted stand-in for Claude: each reply can stream text and call Sagal's real tools. */
 export class FakeBrain implements Brain {
   calls: TurnInput[] = [];
-  constructor(public script: (input: TurnInput) => { text: string; tools?: { name: string; input: unknown }[]; error?: Error; escalate?: string }) {}
+  constructor(public script: (input: TurnInput) => { text: string; tools?: { name: string; input: unknown }[]; error?: Error; escalate?: string; webUnavailable?: boolean }) {}
   async reply(input: TurnInput, ctx: ToolContext, cb: TurnCallbacks): Promise<TurnResult> {
     this.calls.push(input);
     const step = this.script(input);
@@ -52,7 +52,7 @@ export class FakeBrain implements Brain {
       }
     }
     for (const w of step.text.split(/(?<= )/)) cb.onText(w);
-    return { text: step.text, effects, model: input.model };
+    return { text: step.text, effects, model: input.model, ...(step.webUnavailable && input.web ? { webUnavailable: true } : {}) };
   }
 }
 

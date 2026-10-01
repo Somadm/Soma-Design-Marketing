@@ -125,4 +125,30 @@ describe("ClaudeBrain (real SDK, local stand-in API)", () => {
     expect(result).toContain('"is_error":true');
     expect(result).toContain("INVALID_INPUT");
   });
+
+  it("offers Claude's web tools when the switch is on, and carries on without them if the account doesn't allow it", async () => {
+    requests.length = 0;
+    script = () => ({ body: sseMessage("m1", [{ type: "text", text: "Here's what's trending." }], "end_turn") });
+    const brain = new ClaudeBrain("sk-test", "medium", new Anthropic({ apiKey: "sk-test", baseURL: base, maxRetries: 0 }));
+    const on = await brain.reply({ history: [{ role: "user", content: "What's trending?" }], context: "", model: "claude-sonnet-5-5", web: true }, { db, conversationId: 1 }, { onText() {}, onEffect() {} });
+    expect(on.webUnavailable).toBeUndefined();
+    const tools = requests[0].body.tools as { name: string; type?: string; max_uses?: number }[];
+    expect(tools.find((t) => t.name === "web_search")).toMatchObject({ type: "web_search_20250305", max_uses: 5 });
+    expect(tools.find((t) => t.name === "web_fetch")).toMatchObject({ type: "web_fetch_20250910" });
+
+    // Off: not offered.
+    requests.length = 0;
+    await brain.reply({ history: [{ role: "user", content: "hi" }], context: "", model: "claude-sonnet-5-5" }, { db, conversationId: 1 }, { onText() {}, onEffect() {} });
+    expect((requests[0].body.tools as { name: string }[]).map((t) => t.name)).not.toContain("web_search");
+
+    // Account without web search: the API refuses; Sagal answers anyway, without the web tools.
+    requests.length = 0;
+    script = (n) =>
+      n === 1
+        ? { status: 400, body: JSON.stringify({ type: "error", error: { type: "invalid_request_error", message: "web search is not enabled for this organization" } }) }
+        : { body: sseMessage("m2", [{ type: "text", text: "From what I know…" }], "end_turn") };
+    const r = await brain.reply({ history: [{ role: "user", content: "What's trending?" }], context: "", model: "claude-sonnet-5-5", web: true }, { db, conversationId: 1 }, { onText() {}, onEffect() {} });
+    expect(r).toMatchObject({ text: "From what I know…", webUnavailable: true });
+    expect((requests[1].body.tools as { name: string }[]).map((t) => t.name)).not.toContain("web_search");
+  });
 });

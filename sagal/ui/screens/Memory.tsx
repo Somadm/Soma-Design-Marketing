@@ -227,6 +227,25 @@ function Thinking() {
           </button>
         ))}
       </div>
+      <div className="card stack g10" style={{ borderRadius: 20 }}>
+        <div className="row between g12">
+          <div className="stack g4" style={{ maxWidth: 640 }}>
+            <b style={{ fontSize: 16 }}>Let Sagal search the web</b>
+            <span style={{ fontSize: 14, lineHeight: 1.5 }}>
+              She can look up what people are talking about this week, check a fact or date, find trends and formats, and read links you share. She credits sources and never copies anyone's work.
+            </span>
+            <span className="small muted" style={{ lineHeight: 1.5 }}>
+              Costs: each search is about 1 cent on your Claude bill (reading a page only costs the usual thinking). She searches a few times at most per reply, and never during live voice so she answers fast.
+            </span>
+          </div>
+          <Switch
+            on={Boolean(overview?.webSearch)}
+            label="Let Sagal search the web"
+            onChange={(on) => run(async () => { await api.patch("/api/settings/web", { enabled: on }); refreshOverview(); }, on ? "Web search is on. Sagal can look things up from her next reply." : "Web search is off.")}
+          />
+        </div>
+        {overview?.webError && !overview.webSearch && <div className="note warn small">{overview.webError}</div>}
+      </div>
       <div className="list">
         <div style={{ padding: "12px 18px", fontSize: 13, fontWeight: 700, borderBottom: "1px solid var(--line-soft)" }}>In Automatic, Sagal uses Opus 5.5 for…</div>
         {[
@@ -242,6 +261,7 @@ function Thinking() {
         <div className="li"><div><div style={{ fontSize: 14.5, fontWeight: 600 }}>…and Sonnet 5.5 for everything else</div><div className="small muted">Quick questions, small edits, chat, and live voice (so she answers fast). If Sonnet sees a request needs more depth, she hands it to Opus before answering.</div></div></div>
       </div>
       <div className="small muted">The same switch sits at the top of Talk to Sagal, so you can change it mid-conversation.</div>
+
     </>
   );
 }

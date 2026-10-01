@@ -9,6 +9,8 @@ export interface Settings {
   brain: { mode: BrainMode };
   /** Sabah's taste in her own words; Sagal reads it with the Inspiration board every turn. */
   taste: { love: string; avoid: string };
+  /** Let Sagal search the web and read pages (Claude's web tools). Off until Sabah turns it on. */
+  web: { enabled: boolean; lastError?: string | null };
   /** Sagal's own morning check: keep the posting days filled without being asked. */
   routine: { enabled: boolean; days: Weekday[]; lastRun: string | null };
   notifications: { inbox: boolean; fail: boolean; daily: boolean; published: boolean; quiet: boolean };
@@ -22,6 +24,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   brain: { mode: "auto" },
   taste: { love: "", avoid: "" },
+  web: { enabled: false },
   routine: { enabled: true, days: ["Mon", "Wed", "Fri"], lastRun: null },
   notifications: { inbox: true, fail: true, daily: true, published: false, quiet: true },
   voice: { voice: "Warm · lightly Brooklyn", speed: "1.0×", transcript: true },

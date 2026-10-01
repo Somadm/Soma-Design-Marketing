@@ -26,7 +26,7 @@ export interface Ctx {
   discuss: (c: { type: string; id?: number | string; label: string }) => void;
   pending: { type: string; id?: number | string; label: string } | null;
   clearPending: () => void;
-  overview: { inboxCount: number; sample: boolean; email: string | null; portraitUrl: string | null; brainMode: BrainMode } | null;
+  overview: { inboxCount: number; sample: boolean; email: string | null; portraitUrl: string | null; brainMode: BrainMode; webSearch?: boolean; webError?: string | null } | null;
   refreshOverview: () => void;
   toast: (msg: string, err?: boolean) => void;
   vw: number;

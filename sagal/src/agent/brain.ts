@@ -14,6 +14,8 @@ export interface TurnInput {
   model: string;
   /** Offer the hand-over-to-Opus tool (Sonnet in automatic mode). */
   allowEscalate?: boolean;
+  /** Let Claude search the web and read pages this turn (Sabah's switch). */
+  web?: boolean;
 }
 
 export interface TurnCallbacks {
@@ -27,6 +29,8 @@ export interface TurnResult {
   model: string;
   /** Set when Sonnet handed the turn to Opus; the caller re-runs it on the deeper model. */
   escalate?: string;
+  /** The web switch is on, but this Claude account doesn't allow web search yet. */
+  webUnavailable?: boolean;
 }
 
 export interface Brain {
@@ -63,6 +67,8 @@ export class ClaudeBrain implements Brain {
     const texts: string[] = [];
     let model = input.model;
     let jsonRetries = 0;
+    let web = Boolean(input.web);
+    let webUnavailable = false;
     try {
       for (let turn = 0; turn < 8; turn++) {
         if (texts.length && !texts[texts.length - 1].endsWith("\n")) {
@@ -79,7 +85,7 @@ export class ClaudeBrain implements Brain {
               { type: "text", text: input.context },
             ],
             messages,
-            tools: toolDefinitions(input.allowEscalate),
+            tools: toolDefinitions(input.allowEscalate, web),
             output_config: { effort: this.effort },
             betas: [FALLBACK_BETA],
             fallbacks: "default",
@@ -95,6 +101,12 @@ export class ClaudeBrain implements Brain {
           msg = await stream.finalMessage();
           jsonRetries = 0;
         } catch (err) {
+          // Web tools not allowed on this Claude account: carry on without them and say so once.
+          if (web && err instanceof Anthropic.BadRequestError && /web[ _]?(search|fetch)/i.test(err.message)) {
+            web = false;
+            webUnavailable = true;
+            continue;
+          }
           // Eager tool-input streaming: re-issue only when a tool input wasn't parseable JSON.
           if (err instanceof Anthropic.APIError || signal?.aborted || jsonRetries++ >= 2) throw err;
           continue;
@@ -147,6 +159,6 @@ export class ClaudeBrain implements Brain {
       if (err instanceof Anthropic.APIError) throw new BrainError(`Claude returned an error (${err.status ?? "network"}). Press Retry.`, "other");
       throw new BrainError(`Something went wrong reaching Claude: ${(err as Error).message}`, "other");
     }
-    return { text: texts.join("").trim(), effects, model };
+    return { text: texts.join("").trim(), effects, model, ...(webUnavailable ? { webUnavailable: true } : {}) };
   }
 }

@@ -141,7 +141,14 @@ const EscalateInput = z.object({ reason: z.string().min(1).max(120) });
 export const parseEscalation = (input: unknown) => EscalateInput.safeParse(input);
 
 /** JSON schemas for Claude, generated from the same Zod schemas used to validate inputs. */
-export function toolDefinitions(allowEscalate = false): Anthropic.Beta.Messages.BetaTool[] {
+/** Claude's own web tools (run by Anthropic, not by this server). Searches cost about 1 cent each. */
+export const WEB_TOOLS: Anthropic.Beta.Messages.BetaToolUnion[] = [
+  { type: "web_search_20250305", name: "web_search", max_uses: 5, user_location: { type: "approximate", city: "Helsinki", country: "FI", timezone: "Europe/Helsinki" } },
+  { type: "web_fetch_20250910", name: "web_fetch", max_uses: 5, max_content_tokens: 12000 },
+];
+export const isWebTool = (name: string) => name === "web_search" || name === "web_fetch";
+
+export function toolDefinitions(allowEscalate = false, web = false): Anthropic.Beta.Messages.BetaToolUnion[] {
   const escalate: Anthropic.Beta.Messages.BetaTool[] = allowEscalate
     ? [
         {
@@ -152,14 +159,14 @@ export function toolDefinitions(allowEscalate = false): Anthropic.Beta.Messages.
         },
       ]
     : [];
-  return [...escalate, ...(Object.keys(schemas) as ToolName[]).map((name) => {
+  return [...escalate, ...(web ? WEB_TOOLS : []), ...(Object.keys(schemas) as ToolName[]).map((name) => {
     const { $schema: _omit, ...input_schema } = z.toJSONSchema(schemas[name]) as Record<string, unknown>;
     return {
       name,
       description: desc[name],
       input_schema: input_schema as Anthropic.Beta.Messages.BetaTool["input_schema"],
       eager_input_streaming: true,
-    };
+    } as Anthropic.Beta.Messages.BetaTool;
   })];
 }
 

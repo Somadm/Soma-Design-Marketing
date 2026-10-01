@@ -170,4 +170,27 @@ describe("uploads and the voiceover separation", () => {
     expect((await t.app.inject({ url: v.links.voiceover.replace(/sig=[^&]+/, "sig=forged") })).statusCode).toBe(403);
     expect((await api(t).get(`/api/video/${job}/package/subtitles.srt`)).body).toContain("-->");
   });
+
+  it("passes Sabah's web switch to Sagal (not in live voice) and turns it off if Claude can't search", async () => {
+    let n = 0;
+    const brain = new FakeBrain(() => ({ text: "Looked it up.", webUnavailable: n++ === 1 }));
+    t = await makeApp({ cfg: { ANTHROPIC_API_KEY: "sk-ant-test" }, brain });
+    const a = api(t);
+    const conv = await newConv(t);
+    await a.post(`/api/conversations/${conv}/messages`, { text: "What's trending?" });
+    expect(brain.calls[0].web).toBe(false);
+    expect((await a.patch("/api/settings/web", { enabled: true })).statusCode).toBe(200);
+    expect(brain.calls.length).toBe(1);
+    await a.post(`/api/conversations/${conv}/messages`, { text: "What's trending now?" });
+    expect(brain.calls[1].web).toBe(true);
+    expect(brain.calls[1].context).toContain("Web search: on");
+    // Claude refused the web tools: the switch goes off and the thread says why.
+    const ov = (await a.get("/api/overview")).json();
+    expect(ov).toMatchObject({ webSearch: false, webError: expect.stringMatching(/doesn't allow web search/) });
+    const msgs = (await a.get(`/api/conversations/${conv}`)).json().messages;
+    expect(msgs.some((m: { sender: string; text: string }) => m.sender === "system" && /couldn't search the web/.test(m.text))).toBe(true);
+    await a.patch("/api/settings/web", { enabled: true });
+    await a.post(`/api/conversations/${conv}/messages`, { text: "Tell me quickly", via: "voice" });
+    expect(brain.calls[2].web).toBe(false);
+  });
 });
