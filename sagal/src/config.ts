@@ -21,7 +21,9 @@ const EnvSchema = z.object({
 
   // Claude (Sagal's reasoning). The key can also be pasted in Connected accounts.
   ANTHROPIC_API_KEY: z.string().optional(),
-  SAGAL_MODEL: z.string().default("claude-opus-5-5"),
+  /** Everyday thinking (fast, lower cost) and deep thinking (planning, strategy, long creative work). */
+  SAGAL_MODEL_EVERYDAY: z.string().default("claude-sonnet-5-5"),
+  SAGAL_MODEL_DEEP: z.string().default("claude-opus-5-5"),
   SAGAL_EFFORT: z.enum(["low", "medium", "high", "xhigh", "max"]).default("medium"),
 
   // Sign-in codes are emailed with Resend. Without a key, codes are written to the server log.

@@ -26,7 +26,7 @@ export interface Ctx {
   discuss: (c: { type: string; id?: number | string; label: string }) => void;
   pending: { type: string; id?: number | string; label: string } | null;
   clearPending: () => void;
-  overview: { inboxCount: number; sample: boolean; email: string | null; portraitUrl: string | null } | null;
+  overview: { inboxCount: number; sample: boolean; email: string | null; portraitUrl: string | null; brainMode: BrainMode } | null;
   refreshOverview: () => void;
   toast: (msg: string, err?: boolean) => void;
   vw: number;
@@ -258,6 +258,41 @@ export function ImageSlot({ url, placeholder, onFile, round, style }: { url?: st
       {url ? <img src={url} alt="" /> : <span>{placeholder}</span>}
       {picker.input}
     </button>
+  );
+}
+
+// ───── Sagal's thinking (Sonnet / Opus) ─────
+export type BrainMode = "auto" | "everyday" | "deep";
+export const BRAIN_MODES: { id: BrainMode; short: string; title: string; body: string }[] = [
+  { id: "auto", short: "Auto", title: "Automatic (recommended)", body: "Sonnet 5.5 for everyday chat, quick edits and live voice. Sagal steps up to Opus 5.5 for planning, strategy, whole carousels and scripts, careful rewrites and long documents, and can hand a request up herself when she sees it needs more depth." },
+  { id: "everyday", short: "Sonnet", title: "Always Sonnet 5.5", body: "Fast and lower cost for everything. Good for light weeks and quick back-and-forth. Bigger creative work may be a little less considered." },
+  { id: "deep", short: "Opus", title: "Always Opus 5.5", body: "Sagal's deepest thinking for everything, including small talk. Best quality, slower, about twice the cost per message." },
+];
+
+/** Compact switch for the Talk header. */
+export function BrainSwitch() {
+  const { overview, refreshOverview, toast } = useApp();
+  const mode = overview?.brainMode ?? "auto";
+  return (
+    <label className="cbtn" style={{ fontWeight: 400, fontSize: 13, padding: "0 6px 0 12px", gap: 2 }} title="Which Claude model Sagal thinks with: Automatic (Sonnet 5.5, stepping up to Opus 5.5 when needed), always Sonnet 5.5, or always Opus 5.5">
+      <span aria-hidden style={{ fontSize: 14 }}>✦</span>
+      <select
+        value={mode}
+        aria-label="Sagal's thinking"
+        onChange={async (e) => {
+          try {
+            await api.patch("/api/settings/brain", { mode: e.target.value });
+            refreshOverview();
+            toast(`Sagal now thinks with: ${BRAIN_MODES.find((m) => m.id === e.target.value)!.title}.`);
+          } catch (err) {
+            toast((err as Error).message, true);
+          }
+        }}
+        style={{ border: 0, background: "transparent", fontSize: 13, fontWeight: 600 }}
+      >
+        {BRAIN_MODES.map((m) => <option key={m.id} value={m.id}>{m.short}</option>)}
+      </select>
+    </label>
   );
 }
 

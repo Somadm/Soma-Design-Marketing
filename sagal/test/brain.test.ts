@@ -59,11 +59,11 @@ describe("ClaudeBrain (real SDK, local stand-in API)", () => {
       n === 1
         ? { body: sseMessage("m1", [{ type: "text", text: "Putting it on the board." }, { type: "tool_use", id: "tu1", name: "create_idea", input: { title: "Signs we keep photographing", story: "Shopfront lettering.", audience: "Diaspora", purpose: "Craft", format: "Carousel", platforms: ["Instagram"] } }], "tool_use") }
         : { body: sseMessage("m2", [{ type: "text", text: "Done. It's on the idea board." }], "end_turn") };
-    const brain = new ClaudeBrain("sk-test", "claude-opus-5-5", "medium", new Anthropic({ apiKey: "sk-test", baseURL: base, maxRetries: 0 }));
+    const brain = new ClaudeBrain("sk-test", "medium", new Anthropic({ apiKey: "sk-test", baseURL: base, maxRetries: 0 }));
     const deltas: string[] = [];
     const effects: unknown[] = [];
     const r = await brain.reply(
-      { history: [{ role: "user", content: "Is there something in shopfront signs?" }], context: "Now: Thursday." },
+      { history: [{ role: "user", content: "Is there something in shopfront signs?" }], context: "Now: Thursday.", model: "claude-opus-5-5" },
       { db, conversationId: 1 },
       { onText: (d) => deltas.push(d), onEffect: (e) => effects.push(e) },
     );
@@ -91,11 +91,26 @@ describe("ClaudeBrain (real SDK, local stand-in API)", () => {
 
   it("turns a rejected key into a plain-language error", async () => {
     script = () => ({ status: 401, body: JSON.stringify({ type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } }) });
-    const brain = new ClaudeBrain("bad", "claude-opus-5-5", "medium", new Anthropic({ apiKey: "bad", baseURL: base, maxRetries: 0 }));
-    await expect(brain.reply({ history: [{ role: "user", content: "hi" }], context: "" }, { db, conversationId: 1 }, { onText() {}, onEffect() {} })).rejects.toMatchObject({
+    const brain = new ClaudeBrain("bad", "medium", new Anthropic({ apiKey: "bad", baseURL: base, maxRetries: 0 }));
+    await expect(brain.reply({ history: [{ role: "user", content: "hi" }], context: "", model: "claude-opus-5-5" }, { db, conversationId: 1 }, { onText() {}, onEffect() {} })).rejects.toMatchObject({
       kind: "auth",
       message: expect.stringMatching(/rejected the API key/),
     } satisfies Partial<BrainError>);
+  });
+
+  it("Sonnet can hand the turn to Opus, but only at the start of a turn", async () => {
+    requests.length = 0;
+    script = () => ({ body: sseMessage("m1", [{ type: "tool_use", id: "tu5", name: "use_deeper_thinking", input: { reason: "planning the week" } }], "tool_use") });
+    const brain = new ClaudeBrain("sk-test", "medium", new Anthropic({ apiKey: "sk-test", baseURL: base, maxRetries: 0 }));
+    const r = await brain.reply({ history: [{ role: "user", content: "Let's plan" }], context: "", model: "claude-sonnet-5-5", allowEscalate: true }, { db, conversationId: 1 }, { onText() {}, onEffect() {} });
+    expect(r.escalate).toBe("planning the week");
+    expect(requests[0].body.model).toBe("claude-sonnet-5-5");
+    expect((requests[0].body.tools as { name: string }[])[0].name).toBe("use_deeper_thinking");
+    // Not offered when not allowed.
+    requests.length = 0;
+    script = () => ({ body: sseMessage("m2", [{ type: "text", text: "Hi." }], "end_turn") });
+    await brain.reply({ history: [{ role: "user", content: "hi" }], context: "", model: "claude-opus-5-5" }, { db, conversationId: 1 }, { onText() {}, onEffect() {} });
+    expect((requests[0].body.tools as { name: string }[]).map((t) => t.name)).not.toContain("use_deeper_thinking");
   });
 
   it("returns a tool error to Claude instead of running invalid input", async () => {
@@ -104,8 +119,8 @@ describe("ClaudeBrain (real SDK, local stand-in API)", () => {
       n === 1
         ? { body: sseMessage("m1", [{ type: "tool_use", id: "tu9", name: "create_idea", input: { title: "" } }], "tool_use") }
         : { body: sseMessage("m2", [{ type: "text", text: "Let me fix that." }], "end_turn") };
-    const brain = new ClaudeBrain("sk-test", "claude-opus-5-5", "medium", new Anthropic({ apiKey: "sk-test", baseURL: base, maxRetries: 0 }));
-    await brain.reply({ history: [{ role: "user", content: "x" }], context: "" }, { db, conversationId: 1 }, { onText() {}, onEffect() {} });
+    const brain = new ClaudeBrain("sk-test", "medium", new Anthropic({ apiKey: "sk-test", baseURL: base, maxRetries: 0 }));
+    await brain.reply({ history: [{ role: "user", content: "x" }], context: "", model: "claude-opus-5-5" }, { db, conversationId: 1 }, { onText() {}, onEffect() {} });
     const result = JSON.stringify(requests[1].body.messages);
     expect(result).toContain('"is_error":true');
     expect(result).toContain("INVALID_INPUT");

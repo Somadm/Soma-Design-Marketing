@@ -15,6 +15,8 @@ export interface Message {
   status: "sent" | "failed";
   error: string | null;
   interrupted: boolean;
+  model: string | null;
+  model_reason: string | null;
   created_at: Date;
 }
 
@@ -69,12 +71,13 @@ export async function messages(db: DbClient, conversationId: number, limit = 200
 
 export async function addMessage(db: DbClient, conversationId: number, m: Partial<Message> & { sender: Message["sender"] }): Promise<Message> {
   const { rows } = await db.query<Message>(
-    `INSERT INTO sagal.messages (conversation_id, sender, text, via, context, attachments, voice_note_id, card, quote, decision, status, error, interrupted)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+    `INSERT INTO sagal.messages (conversation_id, sender, text, via, context, attachments, voice_note_id, card, quote, decision, status, error, interrupted, model, model_reason)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
     [
       conversationId, m.sender, m.text ?? "", m.via ?? "text", m.context ? JSON.stringify(m.context) : null,
       JSON.stringify(m.attachments ?? []), m.voice_note_id ?? null, m.card ? JSON.stringify(m.card) : null, m.quote ?? null,
       m.decision ? JSON.stringify(m.decision) : null, m.status ?? "sent", m.error ?? null, m.interrupted ?? false,
+      m.model ?? null, m.model_reason ?? null,
     ],
   );
   await db.query("UPDATE sagal.conversations SET updated_at = now() WHERE id = $1", [conversationId]);

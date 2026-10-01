@@ -9,10 +9,13 @@ import type { Storages } from "../storage/storage.js";
 import { ClaudeBrain, BrainError, type Brain } from "./brain.js";
 import { buildContext, focusText, toHistory } from "./context.js";
 import type { ToolEffect } from "./tools.js";
+import { getSettings } from "../domain/settings.js";
+import { chooseModel, TIER_LABEL } from "./models.js";
 
 export type TurnEvent =
   | { type: "sabah"; message: Message }
-  | { type: "thinking" }
+  | { type: "thinking"; model: string; tier: string; reason: string }
+  | { type: "restart"; model: string; tier: string; reason: string }
   | { type: "delta"; text: string }
   | { type: "effect"; effect: ToolEffect }
   | { type: "sagal"; message: Message }
@@ -75,24 +78,39 @@ export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessa
   }
   const conv = await getConversation(db, conversationId);
   if (!conv) return fail("Conversation not found.");
-  emit({ type: "thinking" });
-  const brain = deps.brain ? deps.brain(key) : new ClaudeBrain(key, deps.cfg.SAGAL_MODEL, deps.cfg.SAGAL_EFFORT);
+  const mode = (await getSettings(db)).brain.mode;
+  let choice = chooseModel(deps.cfg, mode, {
+    text: sabahMessage.text,
+    via: sabahMessage.via,
+    attachmentKinds: (sabahMessage.attachments ?? []).map((a) => a.kind),
+  });
+  emit({ type: "thinking", model: TIER_LABEL[choice.tier], tier: choice.tier, reason: choice.reason });
+  const brain = deps.brain ? deps.brain(key) : new ClaudeBrain(key, deps.cfg.SAGAL_EFFORT);
   const history = await messages(db, conversationId, 60);
   try {
-    const result = await brain.reply(
-      {
-        history: toHistory(history, await attachmentBlocks(deps, sabahMessage)),
-        context: await buildContext(db, {
-          spoken: sabahMessage.via === "voice",
-          conversationTitle: conv.title,
-          project: conv.project,
-          focus: await focusText(db, sabahMessage.context),
-        }),
-      },
-      { db, conversationId, notifier: deps.notifier },
-      { onText: (text) => emit({ type: "delta", text }), onEffect: (effect) => emit({ type: "effect", effect }) },
+    const input = {
+      history: toHistory(history, await attachmentBlocks(deps, sabahMessage)),
+      context: await buildContext(db, {
+        spoken: sabahMessage.via === "voice",
+        conversationTitle: conv.title,
+        project: conv.project,
+        focus: await focusText(db, sabahMessage.context),
+      }),
+    };
+    const callbacks = { onText: (text: string) => emit({ type: "delta", text }), onEffect: (effect: ToolEffect) => emit({ type: "effect", effect }) };
+    const tools = { db, conversationId, notifier: deps.notifier };
+    let result = await brain.reply(
+      { ...input, model: choice.model, allowEscalate: mode === "auto" && choice.tier === "everyday" && sabahMessage.via !== "voice" },
+      tools,
+      callbacks,
       signal,
     );
+    if (result.escalate) {
+      // Sagal decided this needs her deeper mode: start the reply again on Opus.
+      choice = { tier: "deep", model: deps.cfg.SAGAL_MODEL_DEEP, reason: result.escalate };
+      emit({ type: "restart", model: TIER_LABEL.deep, tier: "deep", reason: choice.reason });
+      result = await brain.reply({ ...input, model: choice.model, allowEscalate: false }, tools, callbacks, signal);
+    }
     await db.query("UPDATE sagal.messages SET status = 'sent', error = NULL WHERE id = $1", [sabahMessage.id]);
     const cards = result.effects.filter((e) => e.card).map((e) => e.card!);
     const quote = result.effects.find((e) => e.quote)?.quote ?? null;
@@ -104,10 +122,12 @@ export async function runTurn(deps: TurnDeps, conversationId: number, sabahMessa
       card: cards[0] ?? null,
       quote,
       decision,
+      model: TIER_LABEL[choice.tier],
+      model_reason: choice.reason,
     });
     emit({ type: "sagal", message: saved });
     for (const card of cards.slice(1)) emit({ type: "sagal", message: await addMessage(db, conversationId, { sender: "sagal", text: "", card }) });
-    await setState(db, "anthropic", "connected", { account: result.model });
+    await setState(db, "anthropic", "connected", { account: "Sonnet 5.5 + Opus 5.5" });
   } catch (err) {
     if (err instanceof BrainError && err.kind === "auth") await setState(db, "anthropic", "needs_reconnect", { error: err.message });
     await fail(err instanceof BrainError ? err.message : `Something went wrong: ${(err as Error).message}`);

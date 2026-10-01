@@ -1,6 +1,10 @@
 import type { DbClient } from "../db/pool.js";
 
+export type BrainMode = "auto" | "everyday" | "deep";
+
 export interface Settings {
+  /** auto: Sonnet by default, Opus when the work needs it. everyday: always Sonnet. deep: always Opus. */
+  brain: { mode: BrainMode };
   notifications: { inbox: boolean; fail: boolean; daily: boolean; published: boolean; quiet: boolean };
   voice: { voice: string; speed: string; transcript: boolean };
   appearance: { portraitAssetId: number | null; approved: boolean };
@@ -10,6 +14,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  brain: { mode: "auto" },
   notifications: { inbox: true, fail: true, daily: true, published: false, quiet: true },
   voice: { voice: "Warm · lightly Brooklyn", speed: "1.0×", transcript: true },
   appearance: { portraitAssetId: null, approved: false },

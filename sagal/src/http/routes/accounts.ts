@@ -56,9 +56,11 @@ export async function accountRoutes(app: FastifyInstance, deps: Deps) {
       if (s.id === "anthropic") {
         const key = (await vault.get("anthropic.api_key")) ?? cfg.ANTHROPIC_API_KEY;
         if (!key) throw new Error("No key saved yet.");
-        await new Anthropic({ apiKey: key, maxRetries: 0 }).models.retrieve(cfg.SAGAL_MODEL);
-        await setState(db, "anthropic", "connected", { account: cfg.SAGAL_MODEL });
-        return { ok: true, message: `Claude answered. Sagal will think with ${cfg.SAGAL_MODEL}.` };
+        const client = new Anthropic({ apiKey: key, maxRetries: 0 });
+        await client.models.retrieve(cfg.SAGAL_MODEL_EVERYDAY);
+        await client.models.retrieve(cfg.SAGAL_MODEL_DEEP);
+        await setState(db, "anthropic", "connected", { account: "Sonnet 5.5 + Opus 5.5" });
+        return { ok: true, message: "Claude answered. Sagal can use both Sonnet 5.5 and Opus 5.5." };
       }
       if (s.id === "email") {
         const to = await deps.auth.ownerEmail();

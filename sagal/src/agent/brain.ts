@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { BetaContentBlockParam, BetaMessage, BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import { SAGAL_SYSTEM } from "./prompt.js";
-import { runTool, toolDefinitions, type ToolContext, type ToolEffect } from "./tools.js";
+import { ESCALATE_TOOL, parseEscalation, runTool, toolDefinitions, type ToolContext, type ToolEffect } from "./tools.js";
 
 /** Server-side refusal fallback: the API re-runs a declined request on a recommended model. */
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
@@ -10,6 +10,10 @@ export interface TurnInput {
   history: BetaMessageParam[];
   /** Per-turn context (memory, plan, date). Goes after the cached system prompt. */
   context: string;
+  /** Which Claude model answers this turn. */
+  model: string;
+  /** Offer the hand-over-to-Opus tool (Sonnet in automatic mode). */
+  allowEscalate?: boolean;
 }
 
 export interface TurnCallbacks {
@@ -21,6 +25,8 @@ export interface TurnResult {
   text: string;
   effects: ToolEffect[];
   model: string;
+  /** Set when Sonnet handed the turn to Opus; the caller re-runs it on the deeper model. */
+  escalate?: string;
 }
 
 export interface Brain {
@@ -45,7 +51,6 @@ export class ClaudeBrain implements Brain {
 
   constructor(
     apiKey: string,
-    private model: string,
     private effort: "low" | "medium" | "high" | "xhigh" | "max",
     client?: Anthropic,
   ) {
@@ -56,7 +61,7 @@ export class ClaudeBrain implements Brain {
     const messages: BetaMessageParam[] = [...input.history];
     const effects: ToolEffect[] = [];
     const texts: string[] = [];
-    let model = this.model;
+    let model = input.model;
     let jsonRetries = 0;
     try {
       for (let turn = 0; turn < 8; turn++) {
@@ -67,14 +72,14 @@ export class ClaudeBrain implements Brain {
         }
         const stream = this.client.beta.messages.stream(
           {
-            model: this.model,
+            model: input.model,
             max_tokens: 16000,
             system: [
               { type: "text", text: SAGAL_SYSTEM, cache_control: { type: "ephemeral" } },
               { type: "text", text: input.context },
             ],
             messages,
-            tools: toolDefinitions(),
+            tools: toolDefinitions(input.allowEscalate),
             output_config: { effort: this.effort },
             betas: [FALLBACK_BETA],
             fallbacks: "default",
@@ -109,10 +114,20 @@ export class ClaudeBrain implements Brain {
         }
         const uses = msg.content.filter((b): b is Extract<typeof b, { type: "tool_use" }> => b.type === "tool_use");
         if (!uses.length) break;
+        const handover = input.allowEscalate ? uses.find((u) => u.name === ESCALATE_TOOL) : undefined;
+        // Hand-over only at the very start of a turn, before anything was created.
+        if (handover && turn === 0 && !effects.length) {
+          const parsed = parseEscalation(handover.input);
+          return { text: "", effects, model, escalate: parsed.success ? parsed.data.reason : "needs deeper thinking" };
+        }
         if (msg.stop_reason === "max_tokens") throw new BrainError("My reply got cut off. Try asking for something smaller.", "other");
         messages.push({ role: "assistant", content: msg.content as BetaContentBlockParam[] });
         const results: BetaContentBlockParam[] = [];
         for (const u of uses) {
+          if (u.name === ESCALATE_TOOL) {
+            results.push({ type: "tool_result", tool_use_id: u.id, content: "Too late to hand over mid-turn. Carry on and finish this one yourself.", is_error: true });
+            continue;
+          }
           const out = await runTool(u.name, u.input, tools);
           if (out.effect) {
             effects.push(out.effect);

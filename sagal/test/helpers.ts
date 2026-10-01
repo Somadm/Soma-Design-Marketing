@@ -29,11 +29,12 @@ export async function freshDb(): Promise<Db> {
 /** A scripted stand-in for Claude: each reply can stream text and call Sagal's real tools. */
 export class FakeBrain implements Brain {
   calls: TurnInput[] = [];
-  constructor(public script: (input: TurnInput) => { text: string; tools?: { name: string; input: unknown }[]; error?: Error }) {}
+  constructor(public script: (input: TurnInput) => { text: string; tools?: { name: string; input: unknown }[]; error?: Error; escalate?: string }) {}
   async reply(input: TurnInput, ctx: ToolContext, cb: TurnCallbacks): Promise<TurnResult> {
     this.calls.push(input);
     const step = this.script(input);
     if (step.error) throw step.error;
+    if (step.escalate && input.allowEscalate) return { text: "", effects: [], model: input.model, escalate: step.escalate };
     const effects = [];
     for (const t of step.tools ?? []) {
       const out = await runTool(t.name, t.input, ctx);
@@ -44,7 +45,7 @@ export class FakeBrain implements Brain {
       }
     }
     for (const w of step.text.split(/(?<= )/)) cb.onText(w);
-    return { text: step.text, effects, model: "fake-model" };
+    return { text: step.text, effects, model: input.model };
   }
 }
 

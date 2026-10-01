@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api, stream } from "../api";
-import { Kicker, MarkS, Tag, hhmm, useApp, useRouter, when } from "../lib";
+import { BrainSwitch, Kicker, MarkS, Tag, hhmm, useApp, useRouter, when } from "../lib";
 import { MiniSlide, type Carousel } from "../slides";
 import { SpeechRecognitionCtor, VoicePanel } from "./Voice";
 import { Workspace, type WsFocus, type WsTab } from "./Workspace";
@@ -20,6 +20,8 @@ interface Msg {
   status: "sent" | "failed" | "queued" | "sending";
   error: string | null;
   interrupted: boolean;
+  model?: string | null;
+  model_reason?: string | null;
   created_at: string;
   sample?: boolean;
 }
@@ -73,6 +75,8 @@ export function TalkScreen({ onThreads }: { onThreads: (n: ThreadNav | null) => 
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [typing, setTyping] = useState(false);
+  /** Which model is answering right now, e.g. "Opus 5.5 · planning". */
+  const [thinkingWith, setThinkingWith] = useState<string | null>(null);
   const [live, setLive] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
 
@@ -228,6 +232,9 @@ export function TalkScreen({ onThreads }: { onThreads: (n: ThreadNav | null) => 
             if (e.type === "sabah") {
               const m = e.message as Msg;
               setMsgs((ms) => ms.map((x) => (x.id === temp ? { ...m, voiceNoteUrl: out.voiceNoteUrl } : x)));
+            } else if (e.type === "thinking" || e.type === "restart") {
+              setThinkingWith(`${e.model}${e.tier === "deep" ? ` · ${e.reason}` : ""}`);
+              if (e.type === "restart") setLive("");
             } else if (e.type === "delta") setLive((t) => t + (e.text as string));
             else if (e.type === "effect") {
               const card = (e.effect as { card?: Msg["card"] }).card;
@@ -317,7 +324,10 @@ export function TalkScreen({ onThreads }: { onThreads: (n: ThreadNav | null) => 
     setTyping(true);
     try {
       await stream(`/api/messages/${m.id}/retry`, {}, (e) => {
-        if (e.type === "delta") setLive((t) => t + (e.text as string));
+        if (e.type === "thinking" || e.type === "restart") {
+          setThinkingWith(`${e.model}${e.tier === "deep" ? ` · ${e.reason}` : ""}`);
+          if (e.type === "restart") setLive("");
+        } else if (e.type === "delta") setLive((t) => t + (e.text as string));
         else if (e.type === "sagal") {
           setMsgs((ms) => [...ms.map((x) => (x.id === m.id ? { ...x, status: "sent" as const } : x)), e.message as Msg]);
           setLive("");
@@ -341,7 +351,10 @@ export function TalkScreen({ onThreads }: { onThreads: (n: ThreadNav | null) => 
       await stream(`/api/messages/${m.id}/pick`, { option }, (e) => {
         if (e.type === "sabah" || e.type === "sagal") setMsgs((ms) => [...ms, e.message as Msg]);
         if (e.type === "sagal") setLive("");
-        else if (e.type === "delta") setLive((t) => t + (e.text as string));
+        else if (e.type === "thinking" || e.type === "restart") {
+          setThinkingWith(`${e.model}${e.tier === "deep" ? ` · ${e.reason}` : ""}`);
+          if (e.type === "restart") setLive("");
+        } else if (e.type === "delta") setLive((t) => t + (e.text as string));
         else if (e.type === "effect") {
           const card = (e.effect as { card?: Msg["card"] }).card;
           if (card) showCard(card, !isMobile);
@@ -468,7 +481,7 @@ export function TalkScreen({ onThreads }: { onThreads: (n: ThreadNav | null) => 
                 <div className="msg-sagal" aria-live="polite">
                   <MarkS size={30} url={overview?.portraitUrl} />
                   <div className="stack g12 grow">
-                    <div className="row g10"><b style={{ fontSize: 14 }}>Sagal</b><span className="mono xs muted">{hhmm(new Date())}</span></div>
+                    <div className="row g10"><b style={{ fontSize: 14 }}>Sagal</b><span className="mono xs muted">{hhmm(new Date())}{thinkingWith ? ` · ${thinkingWith}` : ""}</span></div>
                     <div className="msg-text">{live}</div>
                   </div>
                 </div>
@@ -477,7 +490,7 @@ export function TalkScreen({ onThreads }: { onThreads: (n: ThreadNav | null) => 
                 <div className="row g14" aria-live="polite">
                   <MarkS size={30} url={overview?.portraitUrl} />
                   <TypingDots />
-                  <span className="small muted">Sagal is thinking (constructively)</span>
+                  <span className="small muted">Sagal is thinking (constructively){thinkingWith ? ` · ${thinkingWith}` : ""}</span>
                 </div>
               )}
             </div>
@@ -535,6 +548,7 @@ export function TalkScreen({ onThreads }: { onThreads: (n: ThreadNav | null) => 
                         <svg width="12" height="16" viewBox="0 0 12 16" fill="none" stroke="#111" strokeWidth="1.6" aria-hidden><rect x="3" y="1" width="6" height="9" rx="3" /><path d="M1 7.5a5 5 0 0 0 10 0M6 12.5V15" /></svg>
                         Voice note
                       </button>
+                      <BrainSwitch />
                       <div className="grow" />
                       <button className="cbtn dark" onClick={() => setVoiceOn(true)}>
                         <span className="row" style={{ gap: 2 }} aria-hidden>
@@ -596,6 +610,11 @@ function SagalMsg({ m, portrait, onOpen, onPick }: { m: Msg; portrait?: string |
         <div className="row g10 wrap">
           <b style={{ fontSize: 14 }}>Sagal</b>
           <span className="mono xs muted">{when(m.created_at)}{m.via === "voice" ? " · spoken" : ""}</span>
+          {m.model && (
+            <span className="mono xs muted" title={m.model_reason ? `Why: ${m.model_reason}` : undefined}>
+              · {m.model}{m.model.startsWith("Opus") && m.model_reason ? ` · ${m.model_reason}` : ""}
+            </span>
+          )}
         </div>
         {m.text && <div className="msg-text">{m.text}</div>}
         {m.interrupted && <div className="mono xs muted" style={{ letterSpacing: ".04em" }}>— stopped when you started talking</div>}

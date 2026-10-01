@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api";
-import { ImageSlot, Kicker, LoadError, Loading, MarkS, PLATFORMS, Switch, Tag, useAction, useApp, useLoad, useRouter, when } from "../lib";
+import { BRAIN_MODES, ImageSlot, Kicker, LoadError, Loading, MarkS, PLATFORMS, Switch, Tag, useAction, useApp, useLoad, useRouter, when } from "../lib";
 import { SPEEDS } from "./Voice";
 
 const TABS = [
@@ -8,6 +8,7 @@ const TABS = [
   ["brand", "Brand assets"],
   ["language", "Approved language"],
   ["prefs", "Creative preferences"],
+  ["thinking", "Sagal's thinking"],
   ["voice", "Voice"],
   ["accounts", "Connected accounts"],
   ["notif", "Notifications"],
@@ -49,6 +50,7 @@ export function MemoryScreen() {
             {tab === "brand" && <Brand />}
             {tab === "language" && <Language />}
             {tab === "prefs" && <Prefs />}
+            {tab === "thinking" && <Thinking />}
             {tab === "voice" && <VoiceSettings />}
             {tab === "accounts" && <Accounts />}
             {tab === "notif" && <Notifications />}
@@ -197,6 +199,49 @@ function Prefs() {
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+function Thinking() {
+  const { overview, refreshOverview } = useApp();
+  const { run } = useAction();
+  const mode = overview?.brainMode ?? "auto";
+  return (
+    <>
+      <div className="title-m">Sagal's thinking</div>
+      <div className="muted" style={{ fontSize: 14.5, lineHeight: 1.55, maxWidth: 720 }}>
+        Sagal thinks with Claude. <b>Sonnet 5.5</b> is quick and costs about half as much. <b>Opus 5.5</b> is her deepest thinking, for the work that matters most. Each reply shows which one wrote it.
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,240px),1fr))", gap: 12 }}>
+        {BRAIN_MODES.map((m) => (
+          <button
+            key={m.id}
+            aria-pressed={mode === m.id}
+            onClick={() => run(async () => { await api.patch("/api/settings/brain", { mode: m.id }); refreshOverview(); }, `Saved: ${m.title}.`)}
+            className="stack g8"
+            style={{ textAlign: "left", border: `1.5px solid ${mode === m.id ? "var(--blue)" : "var(--input-2)"}`, background: mode === m.id ? "var(--blue-tint)" : "#fff", borderRadius: 20, padding: "18px 20px" }}
+          >
+            <span className="row g10"><span style={{ width: 18, height: 18, borderRadius: "50%", border: "1.5px solid #111", background: mode === m.id ? "#111" : "#fff", boxShadow: "inset 0 0 0 3px #fff" }} /><b style={{ fontSize: 16 }}>{m.title}</b></span>
+            <span style={{ fontSize: 14, lineHeight: 1.5 }}>{m.body}</span>
+          </button>
+        ))}
+      </div>
+      <div className="list">
+        <div style={{ padding: "12px 18px", fontSize: 13, fontWeight: 700, borderBottom: "1px solid var(--line-soft)" }}>In Automatic, Sagal uses Opus 5.5 for…</div>
+        {[
+          ["Planning", "a week, a month, a launch or a series"],
+          ["Strategy", "positioning, campaigns, brand voice, messaging"],
+          ["Whole drafts", "a full carousel, a video script, a story"],
+          ["Careful work", "rewrites, critiques, reading results"],
+          ["Long material", "PDFs, several reference images, long messages"],
+          ["When you ask", "“think harder”, “take your time”, “deep dive”"],
+        ].map(([k, v]) => (
+          <div key={k} className="li"><div><div style={{ fontSize: 14.5, fontWeight: 600 }}>{k}</div><div className="small muted">{v}</div></div></div>
+        ))}
+        <div className="li"><div><div style={{ fontSize: 14.5, fontWeight: 600 }}>…and Sonnet 5.5 for everything else</div><div className="small muted">Quick questions, small edits, chat, and live voice (so she answers fast). If Sonnet sees a request needs more depth, she hands it to Opus before answering.</div></div></div>
+      </div>
+      <div className="small muted">The same switch sits at the top of Talk to Sagal, so you can change it mid-conversation.</div>
     </>
   );
 }

@@ -87,6 +87,30 @@ describe("Talk to Sagal", () => {
     expect(mem.history.length).toBeGreaterThanOrEqual(2);
   });
 
+  it("uses Sonnet for chat, Opus for planning, and re-runs on Opus when Sonnet hands over", async () => {
+    const brain = new FakeBrain((input) => (/develop/.test(JSON.stringify(input.history)) ? { text: "Let's dig in.", escalate: "developing an idea" } : { text: "Sure." }));
+    t = await makeApp({ cfg: { ANTHROPIC_API_KEY: "sk-ant-test" }, brain });
+    const id = await newConv(t);
+    const chat = sse((await api(t).post(`/api/conversations/${id}/messages`, { text: "Morning!" })).body);
+    expect(chat.find((e) => e.type === "thinking")).toMatchObject({ model: "Sonnet 5.5", reason: "everyday chat" });
+    expect(chat.find((e) => e.type === "sagal")!.message).toMatchObject({ model: "Sonnet 5.5", model_reason: "everyday chat" });
+    expect(brain.calls[0]).toMatchObject({ model: "claude-sonnet-5-5", allowEscalate: true });
+
+    sse((await api(t).post(`/api/conversations/${id}/messages`, { text: "Let's plan this week." })).body);
+    expect(brain.calls[1]).toMatchObject({ model: "claude-opus-5-5", allowEscalate: false });
+
+    const handed = sse((await api(t).post(`/api/conversations/${id}/messages`, { text: "I have an idea, help me develop it" })).body);
+    expect(handed.map((e) => e.type)).toContain("restart");
+    expect(brain.calls.slice(-2).map((c) => c.model)).toEqual(["claude-sonnet-5-5", "claude-opus-5-5"]);
+    expect(handed.find((e) => e.type === "sagal")!.message).toMatchObject({ model: "Opus 5.5", model_reason: "developing an idea" });
+
+    // The switch: always Sonnet.
+    expect((await api(t).patch("/api/settings/brain", { mode: "everyday" })).statusCode).toBe(200);
+    expect((await api(t).get("/api/overview")).json().brainMode).toBe("everyday");
+    sse((await api(t).post(`/api/conversations/${id}/messages`, { text: "Let's plan this week." })).body);
+    expect(brain.calls[brain.calls.length - 1]).toMatchObject({ model: "claude-sonnet-5-5", allowEscalate: false });
+  });
+
   it("Discuss slide gives Sagal the slide and its comments", async () => {
     t = await makeApp({ cfg: { ANTHROPIC_API_KEY: "sk-ant-test" } });
     await api(t).post("/api/sample/load");

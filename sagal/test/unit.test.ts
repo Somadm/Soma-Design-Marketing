@@ -106,3 +106,27 @@ describe("storage file names", async () => {
     expect(() => safeKey("media//x")).toThrow();
   });
 });
+
+describe("choosing Sonnet or Opus", async () => {
+  const { chooseModel } = await import("../src/agent/models.js");
+  const cfg = { SAGAL_MODEL_EVERYDAY: "claude-sonnet-5-5", SAGAL_MODEL_DEEP: "claude-opus-5-5" };
+  const msg = (text: string, via = "text", attachmentKinds: string[] = []) => ({ text, via, attachmentKinds });
+  it("automatic: everyday chat on Sonnet, heavier work on Opus", () => {
+    expect(chooseModel(cfg, "auto", msg("Hi! How are you?"))).toMatchObject({ tier: "everyday", model: "claude-sonnet-5-5" });
+    expect(chooseModel(cfg, "auto", msg("Can you fix the typo on slide 2?"))).toMatchObject({ tier: "everyday" });
+    expect(chooseModel(cfg, "auto", msg("Let's plan this week."))).toMatchObject({ tier: "deep", model: "claude-opus-5-5", reason: "planning" });
+    expect(chooseModel(cfg, "auto", msg("Turn this project into a story."))).toMatchObject({ tier: "deep" });
+    expect(chooseModel(cfg, "auto", msg("Write the script for Thursday"))).toMatchObject({ tier: "deep" });
+    expect(chooseModel(cfg, "auto", msg("think harder about this"))).toMatchObject({ tier: "deep", reason: "you asked her to think harder" });
+    expect(chooseModel(cfg, "auto", msg("Have a look", "text", ["pdf"]))).toMatchObject({ tier: "deep", reason: "reading a document" });
+    expect(chooseModel(cfg, "auto", msg("x".repeat(1500)))).toMatchObject({ tier: "deep" });
+  });
+  it("live voice stays on Sonnet for speed, unless set to always Opus", () => {
+    expect(chooseModel(cfg, "auto", msg("Let's plan this week.", "voice"))).toMatchObject({ tier: "everyday" });
+    expect(chooseModel(cfg, "deep", msg("hi", "voice"))).toMatchObject({ tier: "deep" });
+  });
+  it("respects the fixed settings", () => {
+    expect(chooseModel(cfg, "everyday", msg("Let's plan this week."))).toMatchObject({ tier: "everyday" });
+    expect(chooseModel(cfg, "deep", msg("hi"))).toMatchObject({ tier: "deep" });
+  });
+});

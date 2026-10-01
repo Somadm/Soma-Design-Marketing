@@ -99,9 +99,24 @@ const desc: Record<ToolName, string> = {
   show_this_week: "Show the agreed plan for this week in the workspace.",
 };
 
+/** Only offered on Sonnet in automatic mode: hand this turn to Opus. */
+export const ESCALATE_TOOL = "use_deeper_thinking";
+const EscalateInput = z.object({ reason: z.string().min(1).max(120) });
+export const parseEscalation = (input: unknown) => EscalateInput.safeParse(input);
+
 /** JSON schemas for Claude, generated from the same Zod schemas used to validate inputs. */
-export function toolDefinitions(): Anthropic.Beta.Messages.BetaTool[] {
-  return (Object.keys(schemas) as ToolName[]).map((name) => {
+export function toolDefinitions(allowEscalate = false): Anthropic.Beta.Messages.BetaTool[] {
+  const escalate: Anthropic.Beta.Messages.BetaTool[] = allowEscalate
+    ? [
+        {
+          name: ESCALATE_TOOL,
+          description:
+            "Hand this turn to your deeper-thinking model (Opus 5.5). Call it FIRST, before writing anything, when the request needs real depth: planning a week or a series, strategy or positioning, drafting a whole carousel or script, a careful rewrite or critique, weighing a hard trade-off, or reading a long document. Don't use it for quick questions, small edits, or chat. Give a short plain reason, e.g. \"planning the week\".",
+          input_schema: (({ $schema: _s, ...rest }) => rest)(z.toJSONSchema(EscalateInput) as Record<string, unknown>) as Anthropic.Beta.Messages.BetaTool["input_schema"],
+        },
+      ]
+    : [];
+  return [...escalate, ...(Object.keys(schemas) as ToolName[]).map((name) => {
     const { $schema: _omit, ...input_schema } = z.toJSONSchema(schemas[name]) as Record<string, unknown>;
     return {
       name,
@@ -109,7 +124,7 @@ export function toolDefinitions(): Anthropic.Beta.Messages.BetaTool[] {
       input_schema: input_schema as Anthropic.Beta.Messages.BetaTool["input_schema"],
       eager_input_streaming: true,
     };
-  });
+  })];
 }
 
 export async function runTool(name: string, rawInput: unknown, ctx: ToolContext): Promise<ToolOutcome> {

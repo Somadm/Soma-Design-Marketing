@@ -20,6 +20,7 @@ export async function memoryRoutes(app: FastifyInstance, deps: Deps) {
       inboxCount: inbox.rows[0].n,
       sample: await hasSample(db),
       email: await deps.auth.ownerEmail(),
+      brainMode: s.brain.mode,
       portraitUrl: s.appearance.approved && s.appearance.portraitAssetId ? await assetLink(db, storages, s.appearance.portraitAssetId) : null,
     };
   });
@@ -74,6 +75,12 @@ export async function memoryRoutes(app: FastifyInstance, deps: Deps) {
     const b = parse(z.object({ inbox: z.boolean(), fail: z.boolean(), daily: z.boolean(), published: z.boolean(), quiet: z.boolean() }).partial(), req.body);
     const s = await getSettings(db);
     await setSetting(db, "notifications", { ...s.notifications, ...b });
+    return { ok: true };
+  });
+
+  app.patch("/api/settings/brain", async (req) => {
+    const b = parse(z.object({ mode: z.enum(["auto", "everyday", "deep"]) }), req.body);
+    await setSetting(db, "brain", { mode: b.mode });
     return { ok: true };
   });
 

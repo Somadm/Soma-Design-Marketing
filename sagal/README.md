@@ -54,7 +54,11 @@ Postgres  ── schema sagal  (Sagal's tables)
   (`voiceovers/`, or their own bucket) and the database only accepts `uploaded_by = 'sabah'` audio there.
   `buildHeygenRequest` accepts only a voiceover row; there is no path from Sagal's voice to HeyGen, and nothing
   clones Sabah's voice. Tests cover all of this.
-- **Claude**: `claude-opus-5-5` at `medium` effort by default (set `SAGAL_MODEL=claude-sonnet-5-5` for lower cost).
+- **Claude, two speeds**: Sonnet 5.5 for everyday chat, quick edits and live voice; Opus 5.5 for planning,
+  strategy, whole drafts, careful rewrites and long documents (`src/agent/models.ts`). Sonnet can also hand a turn
+  up to Opus itself (`use_deeper_thinking`, only at the start of a turn). Sabah switches between Automatic /
+  always Sonnet / always Opus in Talk or Memory & settings → Sagal's thinking; each reply shows which model wrote
+  it. Models: `SAGAL_MODEL_EVERYDAY`, `SAGAL_MODEL_DEEP`.
   The stable system prompt is cached; memory, the week's plan, inbox and connections are read fresh each turn.
   Server-side refusal fallback is on. Sagal's tools: create idea, create/edit carousel, write video script,
   offer choices, ask Sabah, remember, propose for paid, show this week. She can't publish or change the plan.
@@ -76,7 +80,7 @@ agents ask instead of overwriting (`src/domain/memory.ts`).
 ```bash
 npm install
 npm run dev        # builds the UI, starts the server with reload (needs .env, see .env.example)
-npm test           # 45 tests: auth, permissions, worker, audio separation, Claude loop, API
+npm test           # 50 tests: auth, permissions, worker, audio separation, Claude loop, API
 npm run typecheck
 ```
 

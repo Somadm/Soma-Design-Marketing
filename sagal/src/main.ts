@@ -22,7 +22,7 @@ async function main() {
   const app = await buildServer({ db, cfg, vault, auth, storages, mailer, notifier });
   const worker = startWorker(db, notifier, cfg.WORKER_POLL_SECONDS);
   await app.listen({ port: cfg.PORT, host: cfg.HOST });
-  console.log(`Sagal is running at ${cfg.APP_URL} (storage: ${cfg.STORAGE_DRIVER}, model: ${cfg.SAGAL_MODEL})`);
+  console.log(`Sagal is running at ${cfg.APP_URL} (storage: ${cfg.STORAGE_DRIVER}, models: ${cfg.SAGAL_MODEL_EVERYDAY} / ${cfg.SAGAL_MODEL_DEEP})`);
 
   const shutdown = async (signal: string) => {
     console.log(`${signal} received, shutting down`);
