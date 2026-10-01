@@ -76,7 +76,7 @@ agents ask instead of overwriting (`src/domain/memory.ts`).
 ```bash
 npm install
 npm run dev        # builds the UI, starts the server with reload (needs .env, see .env.example)
-npm test           # 43 tests: auth, permissions, worker, audio separation, Claude loop, API
+npm test           # 45 tests: auth, permissions, worker, audio separation, Claude loop, API
 npm run typecheck
 ```
 

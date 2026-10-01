@@ -23,12 +23,22 @@ export interface Storage {
 }
 
 export function safeKey(key: string): string {
-  if (!/^[a-z0-9-]+\/[A-Za-z0-9._\/-]+$/.test(key) || key.includes("..")) throw new Error(`Unsafe storage key: ${key}`);
+  // Reject anything that could step outside its folder: only plain characters, and no
+  // path segment that is empty, "." or "..".
+  const segments = key.split("/");
+  if (!/^[a-z0-9-]+\/[A-Za-z0-9._\/-]+$/.test(key) || segments.some((p) => p === "" || p === "." || p === "..")) {
+    throw new Error(`Unsafe storage key: ${key}`);
+  }
   return key;
 }
 
 export function storageFilename(original: string): string {
-  const base = path.basename(original).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(-80);
+  const base = path
+    .basename(original)
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/\.{2,}/g, ".") // "Logo...@3x.png" → "Logo.-3x.png"
+    .replace(/^[-.]+|[-.]+$/g, "")
+    .slice(-80);
   return base || "file";
 }
 

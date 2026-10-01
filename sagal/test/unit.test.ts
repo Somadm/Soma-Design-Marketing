@@ -89,3 +89,20 @@ describe("master key", async () => {
     expect(masterKey("some long random value that is not base64!!")).toHaveLength(32);
   });
 });
+
+describe("storage file names", async () => {
+  const { safeKey, storageFilename } = await import("../src/storage/storage.js");
+  it("cleans awkward names (several dots, spaces, brackets) into safe keys", () => {
+    for (const name of ["S...@3x (8).png", "../../etc/passwd", "...", "Screenshot 2026-10-01 at 12.30.45.png", "logo..png"]) {
+      const clean = storageFilename(name);
+      expect(clean).not.toContain("..");
+      expect(() => safeKey(`media/brand/2026-10-01/abc-${clean}`)).not.toThrow();
+    }
+    expect(storageFilename("S...@3x (8).png")).toBe("S.-3x-8-.png");
+  });
+  it("still refuses keys that step out of their folder", () => {
+    expect(() => safeKey("media/../secret")).toThrow();
+    expect(() => safeKey("media/./x")).toThrow();
+    expect(() => safeKey("media//x")).toThrow();
+  });
+});
