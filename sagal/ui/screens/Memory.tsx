@@ -388,7 +388,7 @@ function ServiceForm({ s, onChange }: { s: Service; onChange: () => Promise<void
         <div className="row g8 wrap">
           <button className="btn ink sm" disabled={busy || !Object.values(vals).some((v) => v.trim())}>Save</button>
           {s.oauth && <a className="btn blue sm" href={`/api/oauth/${s.id}/start`}>{s.state === "connected" ? "Reconnect" : "Connect"}</a>}
-          {(s.id === "anthropic" || s.id === "email" || s.id === "heygen") && (s.saved[s.fields[0].key] || s.envFallback) && (
+          {(s.id === "anthropic" || s.id === "email" || s.id === "heygen" || (s.id === "meta" && s.state === "connected")) && (s.saved[s.fields[0].key] || s.envFallback) && (
             <button type="button" className="btn ghost sm" disabled={busy} onClick={() => run(async () => { const r = await api.post<{ ok: boolean; message: string }>(`/api/accounts/${s.id}/test`); toast(r.message, !r.ok); await onChange(); })}>Test it</button>
           )}
           {s.state !== "not_connected" && (

@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Config } from "../config.js";
 import type { Db } from "../db/pool.js";
 import type { Vault } from "../secrets/vault.js";
+import { accountLabel, connectMeta } from "./meta.js";
 import { setState, type ServiceId } from "./registry.js";
 
 interface Provider {
@@ -111,6 +112,15 @@ export async function finishOAuth(
     });
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok || typeof json.access_token !== "string") throw new Error(`HTTP ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
+    if (service === "meta") {
+      // Facebook's sign-in lasts an hour or two: swap it for the Page's long-lived access.
+      const acct = await connectMeta(fetchImpl, vault, json.access_token);
+      await setState(db, service, "connected", { account: accountLabel(acct) });
+      return {
+        ok: true,
+        message: acct.igUserId ? `Connected to ${acct.pageName} and @${acct.igUsername}.` : `Connected to ${acct.pageName}. No Instagram account is linked to this Page yet, so only Facebook can post.`,
+      };
+    }
     await vault.set(`${service}.access_token`, json.access_token);
     if (typeof json.refresh_token === "string") await vault.set(`${service}.refresh_token`, json.refresh_token);
     if (typeof json.expires_in === "number") await vault.set(`${service}.expires_at`, new Date(Date.now() + json.expires_in * 1000).toISOString());

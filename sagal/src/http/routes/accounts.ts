@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { accountLabel, graph, metaAccount } from "../../integrations/meta.js";
 import { finishOAuth, PROVIDERS, redirectUri, startOAuth } from "../../integrations/oauth.js";
 import { disconnect, integrationStates, saveCredentials, serviceDef, SERVICES, setState, type ServiceId } from "../../integrations/registry.js";
 import { HttpError, parse, type Deps } from "../deps.js";
@@ -81,6 +82,20 @@ export async function accountRoutes(app: FastifyInstance, deps: Deps) {
         const credit = typeof body.data?.remaining_quota === "number" ? ` · API credit left: ${body.data.remaining_quota}` : "";
         await setState(db, "heygen", "connected", { account: `API key works${credit}` });
         return { ok: true, message: `HeyGen accepted the key${credit}.` };
+      }
+      if (id === "meta") {
+        const acct = await metaAccount(vault);
+        if (!acct) throw new Error("Press Connect first (or again): Sagal doesn't have your Page's access yet.");
+        const page = await graph<{ name: string; instagram_business_account?: { id: string; username?: string } }>(f, "GET", acct.pageId, {
+          fields: "name,instagram_business_account{id,username}",
+          access_token: acct.pageToken,
+        });
+        const ig = page.instagram_business_account;
+        await setState(db, "meta", "connected", { account: accountLabel({ pageName: page.name, igUsername: ig?.username ?? null }) });
+        return {
+          ok: true,
+          message: ig ? `Facebook Page “${page.name}” and Instagram @${ig.username} are ready. Sagal can post to both.` : `Facebook Page “${page.name}” is ready. No Instagram account is linked to it, so Instagram posts are handed to you.`,
+        };
       }
       return { ok: false, message: "There's no test for this one yet. It's checked when it's first used." };
     } catch (err) {

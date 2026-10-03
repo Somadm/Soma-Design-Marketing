@@ -22,7 +22,7 @@ async function main() {
   const storages = createStorages(cfg);
   const app = await buildServer({ db, cfg, vault, auth, storages, mailer, notifier });
   // Sagal's morning routine: keeps the posting days filled (drafts + one-tap proposals).
-  const worker = startWorker(db, notifier, cfg.WORKER_POLL_SECONDS, () => maybeRunRoutine({ db, cfg, vault, storages, notifier }));
+  const worker = startWorker(db, notifier, cfg.WORKER_POLL_SECONDS, () => maybeRunRoutine({ db, cfg, vault, storages, notifier }), { storages, vault, appUrl: cfg.APP_URL });
   await app.listen({ port: cfg.PORT, host: cfg.HOST });
   console.log(`Sagal is running at ${cfg.APP_URL} (storage: ${cfg.STORAGE_DRIVER}, models: ${cfg.SAGAL_MODEL_EVERYDAY} / ${cfg.SAGAL_MODEL_DEEP})`);
 

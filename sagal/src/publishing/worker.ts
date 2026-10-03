@@ -1,27 +1,46 @@
-import type { Db } from "../db/pool.js";
+import type { Db, DbClient } from "../db/pool.js";
 import { createInboxItem } from "../domain/inbox.js";
 import type { Notifier } from "../domain/notify.js";
 import type { Post } from "../domain/posts.js";
 import { getSettings, setSetting } from "../domain/settings.js";
 import { integrationStates, serviceForChannel } from "../integrations/registry.js";
 import { helsinkiDate, helsinkiTime } from "../time.js";
+import { BUILT_IN, ManualOnly, type PublishAdapter, type PublishContext } from "./adapters.js";
 import { checkPublish } from "./permissions.js";
 
 /**
- * Publishing adapters. Phase 1 connects nothing, so no adapter can publish yet: every
- * post that is due and allowed goes to a manual handoff (Sabah posts it herself). When
- * an adapter exists it must return a platform post id ONLY after the platform confirms.
+ * Publishing adapters. Instagram and Facebook post automatically once Meta is connected;
+ * other platforms (and videos, for now) go to a manual handoff (Sabah posts it herself).
+ * An adapter returns a platform post id ONLY after the platform confirms. `ADAPTERS`
+ * overrides the built-in ones (tests).
  */
-export interface PublishAdapter {
-  publish(post: Post): Promise<{ platformPostId: string }>;
-}
+export type { PublishAdapter, PublishContext } from "./adapters.js";
 export const ADAPTERS: Partial<Record<string, PublishAdapter>> = {};
+const adapterFor = (platform: string) => ADAPTERS[platform] ?? BUILT_IN[platform];
 
 const when = (p: Post) => `${helsinkiDate(p.scheduled_at)} ${helsinkiTime(p.scheduled_at)}`;
 
-export async function processDuePosts(db: Db, notifier?: Notifier, now = new Date()): Promise<number> {
+/** Sabah posts it herself: the files and caption are ready in Publishing. */
+async function handOff(db: Db | DbClient, post: Post, why: string, notifier?: Notifier) {
+  await db.query("UPDATE sagal.posts SET status = 'manual', note = $2, updated_at = now() WHERE id = $1", [post.id, `Ready to post by hand: ${why}. Caption and files are in the post.`]);
+  await createInboxItem(db, {
+    kind: "Production problem", title: `Post “${post.title}” on ${post.platform} by hand`, dueLabel: "Due now",
+    body: `It's time for this post, and ${why}, so I can't send it myself. Open it in Publishing: download the finished slides (or the LinkedIn PDF), copy the caption, post it, then tell me it's done.`,
+    primaryLabel: "I've posted it", primaryAction: `post_by_hand:${post.id}`, secondaryLabel: "Open Publishing", secondaryAction: "go:publish",
+    dedupeKey: `post-manual:${post.id}`, ref: { postId: post.id },
+  }, notifier);
+}
+
+export async function processDuePosts(db: Db, notifier?: Notifier, now = new Date(), ctx?: Omit<PublishContext, "db">): Promise<number> {
+  // A post left "publishing" means Sagal was interrupted mid-post: never resend blindly.
+  await db.query(
+    `UPDATE sagal.posts SET status = 'failed', error = 'interrupted',
+       note = 'Sagal was interrupted while posting this. Check ' || platform || ' first: it may already be up. Retry only if it isn''t.', updated_at = now()
+     WHERE status = 'publishing' AND updated_at < now() - interval '20 minutes'`,
+  );
   const client = await db.connect();
   let handled = 0;
+  const toPublish: { post: Post; adapter: PublishAdapter }[] = [];
   try {
     await client.query("BEGIN");
     const { rows } = await client.query<Post & { voiceover_id: number | null }>(
@@ -68,39 +87,18 @@ export async function processDuePosts(db: Db, notifier?: Notifier, now = new Dat
       }
 
       const svc = serviceForChannel(post.platform);
-      const adapter = ADAPTERS[post.platform];
-      if (!adapter || !svc || states[svc.id]?.state !== "connected") {
-        const why = !svc || states[svc.id]?.state !== "connected" ? `${post.platform} isn't connected yet` : `automatic posting to ${post.platform} isn't built yet`;
-        await set("manual", `Ready to post by hand: ${why}. Caption and files are in the post.`);
-        await createInboxItem(client, {
-          kind: "Production problem", title: `Post “${post.title}” on ${post.platform} by hand`, dueLabel: "Due now",
-          body: `It's time for this post, and ${why}, so I can't send it myself. Open it in Publishing: download the finished slides (or the LinkedIn PDF), copy the caption, post it, then tell me it's done.`,
-          primaryLabel: "I've posted it", primaryAction: `post_by_hand:${post.id}`, secondaryLabel: "Open Publishing", secondaryAction: "go:publish",
-          dedupeKey: `post-manual:${post.id}`, ref: { postId: post.id },
-        }, notifier);
+      const adapter = adapterFor(post.platform);
+      if (!svc || states[svc.id]?.state !== "connected") {
+        await handOff(client, post, `${post.platform} isn't connected yet`, notifier);
         continue;
       }
-
-      // Connected adapter (phase 2+): mark publishing, then confirm only on the platform's answer.
-      await client.query("UPDATE sagal.posts SET status = 'publishing', attempts = attempts + 1, updated_at = now() WHERE id = $1", [post.id]);
-      try {
-        const { platformPostId } = await adapter.publish(post);
-        await client.query(
-          "UPDATE sagal.posts SET status = 'confirmed', platform_post_id = $2, confirmed_at = now(), note = $3, updated_at = now() WHERE id = $1",
-          [post.id, platformPostId, `${post.platform} confirmed the post.`],
-        );
-        await notifier?.published(post.title, post.platform);
-      } catch (err) {
-        const msg = (err as Error).message;
-        await client.query("UPDATE sagal.posts SET status = 'failed', error = $2, note = $3, updated_at = now() WHERE id = $1", [
-          post.id, msg, `${post.platform} didn't accept it: ${msg}. Nothing was posted. Retry goes to the next agreed slot.`,
-        ]);
-        await createInboxItem(client, {
-          kind: "Publishing failed", title: `“${post.title}” didn't go out on ${post.platform}`, dueLabel: when(post), urgent: true,
-          body: `${post.platform} said: ${msg}. Nothing was posted. Retry and I'll try at the next agreed slot, never straight away.`,
-          primaryLabel: "Open Publishing", primaryAction: "go:publish", dedupeKey: `post-failed:${post.id}`, ref: { postId: post.id },
-        }, notifier);
+      if (!adapter || (!ADAPTERS[post.platform] && !ctx)) {
+        await handOff(client, post, `automatic posting to ${post.platform} isn't built yet`, notifier);
+        continue;
       }
+      // Claimed now; posted after this transaction so slow uploads never hold the lock.
+      await client.query("UPDATE sagal.posts SET status = 'publishing', attempts = attempts + 1, updated_at = now() WHERE id = $1", [post.id]);
+      toPublish.push({ post, adapter });
     }
     await client.query("COMMIT");
   } catch (err) {
@@ -108,6 +106,31 @@ export async function processDuePosts(db: Db, notifier?: Notifier, now = new Dat
     throw err;
   } finally {
     client.release();
+  }
+
+  for (const { post, adapter } of toPublish) {
+    try {
+      const { platformPostId, permalink } = await adapter.publish(post, { db, ...(ctx as Omit<PublishContext, "db">) });
+      await db.query(
+        "UPDATE sagal.posts SET status = 'confirmed', platform_post_id = $2, permalink = $3, confirmed_at = now(), error = NULL, note = $4, updated_at = now() WHERE id = $1",
+        [post.id, platformPostId, permalink ?? null, `${post.platform} confirmed the post.`],
+      );
+      await notifier?.published(post.title, post.platform);
+    } catch (err) {
+      if (err instanceof ManualOnly) {
+        await handOff(db, post, err.message, notifier);
+        continue;
+      }
+      const msg = (err as Error).message;
+      await db.query("UPDATE sagal.posts SET status = 'failed', error = $2, note = $3, updated_at = now() WHERE id = $1", [
+        post.id, msg, `${post.platform} didn't accept it: ${msg}. Nothing was posted. Retry goes to the next agreed slot.`,
+      ]);
+      await createInboxItem(db, {
+        kind: "Publishing failed", title: `“${post.title}” didn't go out on ${post.platform}`, dueLabel: when(post), urgent: true,
+        body: `${post.platform} said: ${msg}. Nothing was posted. Retry and I'll try at the next agreed slot, never straight away.`,
+        primaryLabel: "Open Publishing", primaryAction: "go:publish", dedupeKey: `post-failed:${post.id}`, ref: { postId: post.id },
+      }, notifier);
+    }
   }
   return handled;
 }
@@ -127,12 +150,12 @@ export async function maybeDailySummary(db: Db, notifier: Notifier, now = new Da
 }
 
 /** `daily` runs alongside (never blocking due posts), e.g. Sagal's morning routine. */
-export function startWorker(db: Db, notifier: Notifier, pollSeconds: number, daily?: () => Promise<unknown>) {
+export function startWorker(db: Db, notifier: Notifier, pollSeconds: number, daily?: () => Promise<unknown>, ctx?: Omit<PublishContext, "db">) {
   let stopped = false;
   let running: Promise<void> | null = null;
   const tick = async () => {
     try {
-      await processDuePosts(db, notifier);
+      await processDuePosts(db, notifier, new Date(), ctx);
       await maybeDailySummary(db, notifier);
       daily?.().catch((err) => console.error("[sagal] morning routine failed:", (err as Error).message));
     } catch (err) {

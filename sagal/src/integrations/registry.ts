@@ -60,7 +60,7 @@ export const SERVICES: ServiceDef[] = [
   {
     id: "meta",
     name: "Instagram + Facebook Page",
-    what: "Publishes to your Instagram professional account and Facebook Page.",
+    what: "Posts approved in your plan go out on their own, with their finished design and caption, to your Instagram professional account and Facebook Page. Videos are still handed to you for now.",
     steps: [
       "Make sure Instagram is a Business or Creator account linked to your Facebook Page.",
       "At developers.facebook.com create an app (type: Business).",

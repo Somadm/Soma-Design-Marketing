@@ -76,7 +76,7 @@ export async function buildContext(db: DbClient, opts: { spoken: boolean; conver
     "</taste>",
     "",
     `Publishing authorisation: ${auth.mode === "plan" ? "publish within the approved plan" : "review each finished post"}; channels: ${auth.channels.join(", ") || "none"}; ${auth.paused ? "ALL PUBLISHING IS PAUSED" : "not paused"}; production spend €${spent.toFixed(2)} of €${auth.spend_limit_eur} this month.`,
-    `Connections: ${SERVICES.map((s) => `${s.name} ${(states[s.id]?.state ?? "not_connected").replace("_", " ")}`).join("; ")}. Nothing publishes automatically until a platform is connected: due posts are handed to Sabah to post by hand.`,
+    `Connections: ${SERVICES.map((s) => `${s.name} ${(states[s.id]?.state ?? "not_connected").replace("_", " ")}`).join("; ")}. When Meta (Instagram + Facebook Page) is connected, approved posts with a finished design go out on their own at their time, with their caption; videos and every other platform are handed to Sabah to post by hand.`,
     "",
     `Web search: ${settingsNow.web.enabled ? "on (you can search the web and read pages)" : "off (Sabah can switch it on in Memory & settings)"}.`,
     `Posting rhythm: ${routine.days.join(", ") || "not set"}. Next 7 days with nothing planned or proposed: ${gaps.length ? gaps.join(", ") : "none, the week is covered"}.${routine.enabled ? " Your morning routine fills these on its own." : " Sabah has paused your morning routine."}`,

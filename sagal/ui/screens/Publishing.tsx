@@ -4,7 +4,7 @@ import { Kicker, LoadError, Loading, MarkS, POST_STATUS, Pills, Tag, dayDate, sh
 import { downloadPdf, downloadSlide, downloadZip } from "../export/render";
 import { SlideView, type Carousel, type Crop } from "../slides";
 
-interface Post { id: number; date: string; time: string; platform: string; account_label: string; title: string; format: string; kind: string; caption: string; note: string; status: string; display: string; held_by_sabah: boolean; globalPaused: boolean; needsVoiceover: boolean; needsApproval: boolean; approved_at: string | null; carousel_id: number | null; channelConnected: boolean; sample: boolean }
+interface Post { id: number; date: string; time: string; platform: string; account_label: string; title: string; format: string; kind: string; caption: string; note: string; status: string; display: string; held_by_sabah: boolean; globalPaused: boolean; needsVoiceover: boolean; needsApproval: boolean; approved_at: string | null; carousel_id: number | null; permalink: string | null; channelConnected: boolean; sample: boolean }
 interface Pub { today: string; days: string[]; posts: Post[]; authorisation: { mode: "plan" | "review"; channels: string[]; spendLimitEur: number; paused: boolean }; spentThisMonth: number }
 const FILTERS = ["All", "Instagram", "Facebook", "TikTok", "YouTube Shorts", "LinkedIn"] as const;
 
@@ -180,6 +180,9 @@ function PostDetail({ p, mode, act, onCaption }: { p: Post; mode: string; act: (
         </div>
       ) : null}
       <div className="row g8 wrap">
+        {p.status === "confirmed" && p.permalink && /^https:\/\//.test(p.permalink) && (
+          <a className="btn outline sm" href={p.permalink} target="_blank" rel="noopener noreferrer">View on {p.platform} ↗</a>
+        )}
         {p.status === "failed" && <button className="btn ink sm" onClick={() => act(`/api/posts/${p.id}/retry`, "Retry queued for the next agreed slot.")}>Retry at next slot</button>}
         {p.needsApproval && !p.sample && <button className="btn blue sm" onClick={() => act(`/api/posts/${p.id}/approve`, "Approved.")}>Approve this post</button>}
         {mode === "review" && p.approved_at && <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ok)", padding: "8px 0" }}>Approved by you</span>}

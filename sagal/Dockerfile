@@ -16,6 +16,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
 COPY package.json ./
 COPY migrations ./migrations
+COPY assets ./assets
 USER node
 EXPOSE 8080
 CMD ["node", "dist/src/main.js"]
