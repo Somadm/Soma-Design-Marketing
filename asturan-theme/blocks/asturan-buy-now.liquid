@@ -1,0 +1,57 @@
+{%- doc -%}
+  Outlined "Buy it now" button. Adds the selected variant and quantity from the product form above it
+  to the cart and goes straight to checkout. Optionally hides Shopify's express checkout buttons
+  (such as "Buy with Shop") so only this button shows.
+{%- enddoc -%}
+
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+-%}
+
+{%- if product != blank -%}
+  {%- if block.settings.hide_express_buttons -%}
+    {% style %}
+      .product-details .accelerated-checkout-block { display: none; }
+    {% endstyle %}
+  {%- endif -%}
+  <div class="asturan-buy-now" {{ block.shopify_attributes }}>
+    <button
+      type="button"
+      class="asturan-btn asturan-btn--outline asturan-buy-now__button"
+      data-asturan-buy-now
+      data-checkout-url="{{ routes.root_url | append: '/checkout' | replace: '//', '/' }}"
+      {% unless product.available %}
+        disabled
+      {% endunless %}
+    >
+      {{- block.settings.label | escape -}}
+    </button>
+    <p class="asturan-buy-now__status" role="status" aria-live="polite"></p>
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Asturan buy it now",
+  "tag": null,
+  "settings": [
+    { "type": "text", "id": "label", "label": "Button label", "default": "Buy it now" },
+    {
+      "type": "checkbox",
+      "id": "hide_express_buttons",
+      "label": "Hide express checkout buttons",
+      "info": "Hides Shopify's express buttons (such as \"Buy with Shop\") on the product page. Shoppers can still use Shop Pay, PayPal and others at checkout.",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Asturan buy it now",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

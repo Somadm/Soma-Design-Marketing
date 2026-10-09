@@ -183,3 +183,48 @@ if (document.readyState === 'loading') {
   initRecommendations();
 }
 document.addEventListener('shopify:section:load', initRecommendations);
+
+/**
+ * Buy it now: add the variant and quantity chosen in the product form, then go to checkout.
+ * The variant id input is kept up to date by Horizon's variant picker.
+ */
+document.addEventListener('click', async (event) => {
+  const button = /** @type {HTMLElement} */ (event.target).closest('[data-asturan-buy-now]');
+  if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+
+  const scope = button.closest('.shopify-section') || document;
+  const productForm = scope.querySelector('form[data-type="add-to-cart-form"]');
+  const idInput = productForm?.querySelector('input[name="id"]');
+  const variantId = idInput instanceof HTMLInputElement ? idInput.value : null;
+  const quantityInput = productForm?.querySelector('input[name="quantity"]');
+  const quantity = Math.max(1, Number(quantityInput instanceof HTMLInputElement ? quantityInput.value : 1) || 1);
+  const status = button.parentElement?.querySelector('.asturan-buy-now__status');
+  if (!variantId) return;
+
+  const addButton = productForm?.querySelector('button[type="submit"], .add-to-cart-button');
+  if (addButton instanceof HTMLButtonElement && addButton.disabled) return;
+
+  const routes = /** @type {any} */ (window).Theme?.routes || {};
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  if (status) status.textContent = '';
+
+  try {
+    const response = await fetch(routes.cart_add_url || '/cart/add.js', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ items: [{ id: Number(variantId), quantity }] }),
+    });
+    const result = await response.json();
+    if (!response.ok || result.status) {
+      if (status) status.textContent = result.description || result.message || '';
+      return;
+    }
+    window.location.href = button.dataset.checkoutUrl || '/checkout';
+  } catch (error) {
+    window.location.href = button.dataset.checkoutUrl || '/checkout';
+  } finally {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+  }
+});

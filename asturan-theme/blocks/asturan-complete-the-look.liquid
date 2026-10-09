@@ -30,9 +30,18 @@
     assign match = block.settings.product
   endif
 
-  if match == nil and block.settings.collection != blank
-    for candidate in block.settings.collection.products limit: 12
-      if candidate.available and candidate.id != current.id
+  # Use the second collection when this product already belongs to the first (for example a hijab page)
+  assign fallback = block.settings.collection
+  assign current_handles = current.collections | map: 'handle'
+  if fallback != blank and current_handles contains fallback.handle
+    assign fallback = block.settings.collection_alt
+  endif
+
+  if match == nil and fallback != blank
+    assign current_title = current.title | downcase | strip
+    for candidate in fallback.products limit: 24
+      assign candidate_title = candidate.title | downcase | strip
+      if candidate.available and candidate.id != current.id and candidate_title != current_title
         assign match = candidate
         break
       endif
@@ -126,6 +135,12 @@
       "id": "collection",
       "label": "Fallback collection",
       "info": "The first available product here is shown when nothing else is set (for example Chiffon Hijabs)."
+    },
+    {
+      "type": "collection",
+      "id": "collection_alt",
+      "label": "Fallback for products already in that collection",
+      "info": "Used on pages of products in the fallback collection (for example, suggest an abaya on a hijab page). Leave empty to hide the block there."
     }
   ],
   "presets": [

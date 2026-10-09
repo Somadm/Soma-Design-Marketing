@@ -1439,3 +1439,18 @@ body {
   align-items: center;
   min-height: var(--asturan-tap);
 }
+
+.asturan-buy-now__button {
+  width: 100%;
+  min-height: 52px;
+}
+
+.asturan-buy-now__status {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  color: var(--asturan-burgundy);
+}
+
+.asturan-buy-now__status:empty {
+  display: none;
+}

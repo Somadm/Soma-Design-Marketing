@@ -121,7 +121,7 @@
       ],
       "settings": {
         "heading": "Shop by category",
-        "columns_desktop": 4
+        "columns_desktop": "4"
       }
     },
     "trending": {

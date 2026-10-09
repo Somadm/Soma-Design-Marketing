@@ -243,7 +243,8 @@
                 "heading": "Complete the look",
                 "button_label": "Add",
                 "metafield_key": "custom.complete_the_look",
-                "collection": "chiffon-hijabs"
+                "collection": "chiffon-hijabs",
+                "collection_alt": "open-abayas"
               },
               "blocks": {}
             },
@@ -333,6 +334,14 @@
                 "row_size_fit",
                 "row_shipping"
               ]
+            },
+            "buy_now": {
+              "type": "asturan-buy-now",
+              "settings": {
+                "label": "Buy it now",
+                "hide_express_buttons": true
+              },
+              "blocks": {}
             }
           },
           "block_order": [
@@ -341,6 +350,7 @@
             "variant_picker_R3rGDr",
             "size_guide",
             "buy_buttons_eYQEYi",
+            "buy_now",
             "promise_line",
             "complete_look",
             "details_accordion"
