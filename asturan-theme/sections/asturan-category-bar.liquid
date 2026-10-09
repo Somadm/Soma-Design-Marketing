@@ -40,20 +40,71 @@
           {%- capture group_links -%}
             {%- for i in (first_child..last_index) -%}
               {%- assign child = section.blocks[i] -%}
+              {%- if child.type == 'sublink' -%}
+                {%- continue -%}
+              {%- endif -%}
               {%- if child.type != 'link' -%}
                 {%- break -%}
               {%- endif -%}
-              {%- assign child_url = child.settings.url | default: child.settings.collection.url | default: routes.all_products_collection_url -%}
-              <a
-                class="asturan-catbar__link{% if current_path == child_url %} is-active{% endif %}"
-                href="{{ child_url }}"
-                {% if current_path == child_url %}
-                  aria-current="page"
-                {% endif %}
-                {{ child.shopify_attributes }}
-              >
-                {{- child.settings.label | escape -}}
-              </a>
+              {%- liquid
+                assign child_url = child.settings.url | default: child.settings.collection.url | default: routes.all_products_collection_url
+                assign next_i = i | plus: 1
+              -%}
+              {%- comment -%} Dropdown items placed right after this link open from it {%- endcomment -%}
+              {%- capture dropdown_items -%}
+                {%- for j in (next_i..last_index) -%}
+                  {%- assign sub = section.blocks[j] -%}
+                  {%- if sub.type != 'sublink' -%}
+                    {%- break -%}
+                  {%- endif -%}
+                  {%- capture sub_url -%}{% render 'asturan-sublink-url', item: sub %}{%- endcapture -%}
+                  <li {{ sub.shopify_attributes }}>
+                    <a class="asturan-dd__link" href="{{ sub_url | strip }}">{{ sub.settings.label | escape }}</a>
+                  </li>
+                {%- endfor -%}
+              {%- endcapture -%}
+              {%- if dropdown_items == blank -%}
+                <a
+                  class="asturan-catbar__link{% if current_path == child_url %} is-active{% endif %}"
+                  href="{{ child_url }}"
+                  {% if current_path == child_url %}
+                    aria-current="page"
+                  {% endif %}
+                  {{ child.shopify_attributes }}
+                >
+                  {{- child.settings.label | escape -}}
+                </a>
+              {%- else -%}
+                {%- assign dd_id = 'AsturanDropdown-' | append: child.id -%}
+                <div class="asturan-dd" data-asturan-dd {{ child.shopify_attributes }}>
+                  <a
+                    class="asturan-catbar__link{% if current_path == child_url %} is-active{% endif %}"
+                    href="{{ child_url }}"
+                    {% if current_path == child_url %}
+                      aria-current="page"
+                    {% endif %}
+                  >
+                    {{- child.settings.label | escape -}}
+                  </a>
+                  <button
+                    type="button"
+                    class="asturan-dd__toggle"
+                    aria-expanded="false"
+                    aria-controls="{{ dd_id }}"
+                    aria-label="{{ child.settings.mobile_label | default: child.settings.label | escape }}"
+                  >
+                    <svg aria-hidden="true" focusable="false" width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m1 1 4 4 4-4"/></svg>
+                  </button>
+                  <ul id="{{ dd_id }}" class="asturan-dd__panel list-unstyled" role="list">
+                    <li>
+                      <a class="asturan-dd__link asturan-dd__link--all" href="{{ child_url }}">
+                        {{- child.settings.dropdown_all_label | default: child.settings.mobile_label | default: child.settings.label | escape -}}
+                      </a>
+                    </li>
+                    {{ dropdown_items }}
+                  </ul>
+                </div>
+              {%- endif -%}
             {%- endfor -%}
           {%- endcapture -%}
           {%- if group_links != blank -%}
@@ -102,9 +153,13 @@
     {%- if block.type == 'group' and next_block.type == 'link' -%}
       {%- continue -%}
     {%- endif -%}
+    {%- if block.type == 'sublink' -%}
+      {%- capture link_url -%}{% render 'asturan-sublink-url', item: block %}{%- endcapture -%}
+      {%- assign link_url = link_url | strip -%}
+    {%- endif -%}
     <li>
       <a
-        class="asturan-chip{% if block.type == 'sale' %} asturan-chip--sale{% endif %}{% if is_active %} is-active{% endif %}"
+        class="asturan-chip{% if block.type == 'sale' %} asturan-chip--sale{% endif %}{% if block.type == 'sublink' %} asturan-chip--sub{% endif %}{% if is_active %} is-active{% endif %}"
         href="{{ link_url }}"
         {% if is_active %}
           aria-current="page"
@@ -264,8 +319,29 @@
       "settings": [
         { "type": "text", "id": "label", "label": "Label", "default": "Open" },
         { "type": "text", "id": "mobile_label", "label": "Mobile button label", "default": "Open Abayas" },
+        {
+          "type": "text",
+          "id": "dropdown_all_label",
+          "label": "First dropdown line",
+          "info": "Shown at the top of the dropdown when Dropdown items follow this link (for example All Print Hijabs)."
+        },
         { "type": "collection", "id": "collection", "label": "Collection" },
         { "type": "url", "id": "url", "label": "Link (overrides collection)" }
+      ]
+    },
+    {
+      "type": "sublink",
+      "name": "Dropdown item",
+      "settings": [
+        {
+          "type": "paragraph",
+          "content": "Place right after a Collection link to show it in a dropdown under that link. On mobile it appears as its own button."
+        },
+        { "type": "text", "id": "label", "label": "Label", "default": "Premium Printed Modal Hijab" },
+        { "type": "text", "id": "mobile_label", "label": "Mobile button label" },
+        { "type": "product", "id": "product", "label": "Product" },
+        { "type": "text", "id": "handle", "label": "Product handle", "info": "Used when no product is chosen. If no product matches, the link searches the store for the label." },
+        { "type": "url", "id": "url", "label": "Link (overrides product)" }
       ]
     },
     {

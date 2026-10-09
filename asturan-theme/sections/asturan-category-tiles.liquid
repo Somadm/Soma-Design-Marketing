@@ -26,6 +26,13 @@
           assign collection = block.settings.collection
           assign tile_url = block.settings.url | default: collection.url | default: routes.all_products_collection_url
           assign tile_image = block.settings.image | default: collection.featured_image
+          if tile_image == blank
+            assign tile_image = collection.products.first.featured_media.preview_image
+          endif
+          if tile_image == blank
+            assign store_index = forloop.index0
+            assign tile_image = collections.all.products[store_index].featured_media.preview_image
+          endif
           assign tile_title = block.settings.title | default: collection.title
           assign is_solid = false
           if block.settings.style == 'solid'

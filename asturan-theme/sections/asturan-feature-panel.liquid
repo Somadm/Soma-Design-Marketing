@@ -19,6 +19,13 @@
           assign product_index = i | minus: 1
           assign img = collection.products[product_index].featured_media.preview_image
         endif
+        if img == blank
+          assign product_index = i | plus: 5
+          assign img = collections.all.products[product_index].featured_media.preview_image
+        endif
+        if img == blank
+          assign img = collections.all.products[i].featured_media.preview_image
+        endif
       -%}
       <div class="asturan-rect asturan-feature__image">
         {%- if img != blank -%}

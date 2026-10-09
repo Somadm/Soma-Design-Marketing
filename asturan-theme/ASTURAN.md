@@ -36,6 +36,15 @@ shown whole (never cropped), each linking to its collection. To use other banner
 the hero in Customize (desktop and optional mobile image plus a link). For sharper banners on large
 screens, upload the original full-size files as Banner blocks.
 
+**Nothing left empty:** every image spot fills itself from the store's own products when no image is
+chosen: category tiles use the collection's first product, "Who we are" and the feature panel use
+collection or store product photos, Trending falls back to the newest products, and Shop the look uses
+the first product whose name contains "Metallic Satin" (then the first Open Abaya).
+
+**Print dropdown:** under Hijabs → Print, a dropdown lists All Print Hijabs, Premium Printed Modal Hijab
+and Premium Jersey Hijab (category bar → Dropdown item blocks). Each item links to the product with that
+handle, or to a store search for its name if the handle differs. On mobile they appear as their own buttons.
+
 **Categories on the landing page:** every category is visible on the homepage without opening a menu:
 in the category bar under the logo (a scrollable button row on mobile), and in the 8 category tiles
 directly below the hero.

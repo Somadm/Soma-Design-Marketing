@@ -296,6 +296,8 @@ body {
 /* ---------- Category bar ---------- */
 
 .asturan-catbar {
+  position: relative;
+  z-index: 15;
   background: var(--asturan-white);
   border-block: 1px solid var(--asturan-line);
   font-family: var(--asturan-font-body);
@@ -2064,4 +2066,81 @@ body {
   .asturan-catbar__link {
     transition: none;
   }
+}
+
+/* ---------- Category bar dropdown (for example Print → fabrics) ---------- */
+
+.asturan-dd {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.asturan-dd__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: var(--asturan-tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.asturan-catbar--burgundy .asturan-dd__toggle {
+  color: var(--asturan-white);
+}
+
+.asturan-dd__panel {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: -20px;
+  z-index: 20;
+  display: none;
+  min-width: 280px;
+  margin: 0;
+  padding: 10px 0;
+  background: var(--asturan-white);
+  border-block-start: 2px solid var(--asturan-gold);
+  box-shadow: 0 14px 34px rgb(0 0 0 / 0.14);
+}
+
+.asturan-dd:hover .asturan-dd__panel,
+.asturan-dd:focus-within .asturan-dd__panel,
+.asturan-dd[data-open] .asturan-dd__panel {
+  display: block;
+}
+
+.asturan-dd:hover .asturan-dd__toggle,
+.asturan-dd[data-open] .asturan-dd__toggle {
+  transform: rotate(180deg);
+}
+
+.asturan-dd__link {
+  display: flex;
+  align-items: center;
+  min-height: var(--asturan-tap);
+  padding: 0 20px;
+  color: var(--asturan-black);
+  font-family: var(--asturan-font-body);
+  font-size: 0.875rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.asturan-dd__link:hover,
+.asturan-dd__link:focus-visible {
+  background: var(--asturan-cream);
+  color: var(--asturan-burgundy);
+}
+
+.asturan-dd__link--all {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--asturan-burgundy);
 }

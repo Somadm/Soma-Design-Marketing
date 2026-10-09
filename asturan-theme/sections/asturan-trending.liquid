@@ -29,8 +29,14 @@
       class="asturan-grid list-unstyled{% if section.settings.scroll_on_mobile %} asturan-grid--scroll-mobile{% endif %}"
       role="list"
     >
-      {%- if collection != blank and collection.products_count > 0 -%}
-        {%- for product in collection.products limit: limit -%}
+      {%- liquid
+        assign row_products = collection.products
+        if collection == blank or collection.products_count == 0
+          assign row_products = collections.all.products
+        endif
+      -%}
+      {%- if row_products.size > 0 -%}
+        {%- for product in row_products limit: limit -%}
           <li class="asturan-grid__item">
             {% render 'asturan-product-card', product: product, arch: section.settings.arch_images %}
           </li>

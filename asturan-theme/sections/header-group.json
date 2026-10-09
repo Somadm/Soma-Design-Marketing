@@ -166,7 +166,8 @@
           "settings": {
             "label": "Print",
             "mobile_label": "Print Hijabs",
-            "collection": "print-hijabs"
+            "collection": "print-hijabs",
+            "dropdown_all_label": "All Print Hijabs"
           }
         },
         "group_prayer": {
@@ -183,6 +184,22 @@
             "label": "Sale",
             "collection": "sale"
           }
+        },
+        "sub_modal": {
+          "type": "sublink",
+          "settings": {
+            "label": "Premium Printed Modal Hijab",
+            "mobile_label": "Printed Modal Hijab",
+            "handle": "premium-printed-modal-hijab"
+          }
+        },
+        "sub_jersey": {
+          "type": "sublink",
+          "settings": {
+            "label": "Premium Jersey Hijab",
+            "mobile_label": "Jersey Hijab",
+            "handle": "premium-jersey-hijab"
+          }
         }
       },
       "block_order": [
@@ -193,6 +210,8 @@
         "group_hijabs",
         "link_chiffon",
         "link_print",
+        "sub_modal",
+        "sub_jersey",
         "group_prayer",
         "sale"
       ],

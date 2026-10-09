@@ -12,6 +12,19 @@
   {%- for block in section.blocks -%}
     {%- liquid
       assign product = block.settings.product
+      if product == blank and block.settings.title_keyword != blank
+        assign keyword = block.settings.title_keyword | downcase
+        for candidate in collections.all.products
+          assign candidate_title = candidate.title | downcase
+          if candidate.available and candidate_title contains keyword
+            assign product = candidate
+            break
+          endif
+        endfor
+      endif
+      if product == blank
+        assign product = block.settings.fallback_collection.products.first | default: collections.all.products.first
+      endif
       assign look_image = block.settings.image | default: product.featured_media.preview_image
       assign colour_option = nil
       assign size_option = nil
@@ -135,6 +148,13 @@
       "name": "Look",
       "settings": [
         { "type": "product", "id": "product", "label": "Product" },
+        {
+          "type": "text",
+          "id": "title_keyword",
+          "label": "If no product is chosen, use a product whose name contains",
+          "default": "Metallic Satin"
+        },
+        { "type": "collection", "id": "fallback_collection", "label": "Otherwise use the first product of" },
         {
           "type": "image_picker",
           "id": "image",

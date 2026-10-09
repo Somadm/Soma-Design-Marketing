@@ -307,3 +307,37 @@ if (document.readyState === 'loading') {
   initSlideshows();
 }
 document.addEventListener('shopify:section:load', initSlideshows);
+
+/* Category bar dropdowns: hover on desktop, click or tap on the arrow, Escape or an outside click to close. */
+function setDropdown(dropdown, open) {
+  if (open) dropdown.setAttribute('data-open', '');
+  else dropdown.removeAttribute('data-open');
+  dropdown.querySelector('.asturan-dd__toggle')?.setAttribute('aria-expanded', String(open));
+}
+
+document.addEventListener('click', (event) => {
+  const target = /** @type {HTMLElement} */ (event.target);
+  const toggle = target.closest('.asturan-dd__toggle');
+  document.querySelectorAll('[data-asturan-dd][data-open]').forEach((dropdown) => {
+    if (!dropdown.contains(target)) setDropdown(dropdown, false);
+  });
+  if (!toggle) return;
+  const dropdown = toggle.closest('[data-asturan-dd]');
+  if (dropdown) setDropdown(dropdown, !dropdown.hasAttribute('data-open'));
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape') return;
+  document.querySelectorAll('[data-asturan-dd][data-open]').forEach((dropdown) => {
+    setDropdown(dropdown, false);
+    dropdown.querySelector('.asturan-dd__toggle')?.focus();
+  });
+});
+
+document.addEventListener('mouseover', (event) => {
+  const dropdown = /** @type {HTMLElement} */ (event.target).closest?.('[data-asturan-dd]');
+  document.querySelectorAll('[data-asturan-dd]').forEach((item) => {
+    const toggle = item.querySelector('.asturan-dd__toggle');
+    if (!item.hasAttribute('data-open')) toggle?.setAttribute('aria-expanded', String(item === dropdown));
+  });
+});

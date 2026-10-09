@@ -30,7 +30,20 @@
     <div class="asturan-intro__media">
       {%- for i in (1..2) -%}
         {%- assign key = 'image_' | append: i -%}
-        {%- assign img = section.settings[key] -%}
+        {%- liquid
+          assign img = section.settings[key]
+          if img == blank
+            assign product_index = i | minus: 1
+            assign img = section.settings.collection.products[product_index].featured_media.preview_image
+          endif
+          if img == blank
+            assign product_index = i | plus: 3
+            assign img = collections.all.products[product_index].featured_media.preview_image
+          endif
+          if img == blank
+            assign img = collections.all.products[i].featured_media.preview_image
+          endif
+        -%}
         <div class="asturan-rect asturan-intro__image asturan-intro__image--{{ i }}">
           {%- if img != blank -%}
             {{
@@ -67,6 +80,7 @@
     { "type": "text", "id": "tagline", "label": "Gold tagline", "default": "Home of modest fashion in North America." },
     { "type": "text", "id": "button_label", "label": "Button label" },
     { "type": "url", "id": "button_url", "label": "Button link" },
+    { "type": "collection", "id": "collection", "label": "Use photos from this collection", "info": "Used when no photos are chosen below." },
     { "type": "image_picker", "id": "image_1", "label": "Front photo" },
     { "type": "image_picker", "id": "image_2", "label": "Back photo" }
   ],

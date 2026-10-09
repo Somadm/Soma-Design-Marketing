@@ -160,8 +160,9 @@
             "eyebrow": "Shop the look",
             "button_label": "Shop now",
             "image_position": "left",
-            "product": "blue-purple-metallic-satin-open-abaya",
-            "sizes_word": "Sizes"
+            "sizes_word": "Sizes",
+            "title_keyword": "Metallic Satin",
+            "fallback_collection": "open-abayas"
           }
         }
       },
@@ -218,7 +219,8 @@
         "text": "<p>Asturan Modest Wear offers abayas, hijabs and prayer sets with a focus on polished modest style, comfort, and accessible luxury.</p>",
         "tagline": "Home of modest fashion in North America.",
         "button_label": "Shop all",
-        "button_url": "shopify://collections/all"
+        "button_url": "shopify://collections/all",
+        "collection": "chiffon-hijabs"
       }
     },
     "everyday": {

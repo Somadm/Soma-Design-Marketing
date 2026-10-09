@@ -1,0 +1,24 @@
+{%- doc -%}
+  Outputs the URL for a category bar "Dropdown item" block: its link, else its product, else the product
+  with the given handle, else a store search for its label (so the link always leads somewhere).
+
+  @param {object} item - The dropdown item block
+{%- enddoc -%}
+
+{%- liquid
+  assign item_url = item.settings.url
+  if item_url == blank and item.settings.product != blank
+    assign item_url = item.settings.product.url
+  endif
+  if item_url == blank and item.settings.handle != blank
+    assign handle_product = all_products[item.settings.handle]
+    if handle_product != blank
+      assign item_url = handle_product.url
+    endif
+  endif
+  if item_url == blank
+    assign search_terms = item.settings.label | url_encode
+    assign item_url = routes.search_url | append: '?type=product&q=' | append: search_terms
+  endif
+  echo item_url
+-%}
