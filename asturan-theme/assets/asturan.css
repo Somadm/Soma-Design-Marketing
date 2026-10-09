@@ -266,6 +266,33 @@ body {
   font-family: var(--asturan-font-heading);
 }
 
+/* ---------- Category bar on burgundy ---------- */
+
+.asturan-catbar.asturan-catbar--burgundy {
+  background: var(--asturan-burgundy);
+  border-block: 1px solid rgb(255 255 255 / 0.14);
+}
+
+.asturan-catbar.asturan-catbar--burgundy .asturan-catbar__mobile::after {
+  background: linear-gradient(to right, rgb(var(--asturan-burgundy-rgb) / 0), var(--asturan-burgundy));
+}
+
+.asturan-catbar.asturan-catbar--burgundy .asturan-chip {
+  border-color: rgb(255 255 255 / 0.45);
+  color: var(--asturan-white);
+}
+
+.asturan-catbar.asturan-catbar--burgundy .asturan-chip.is-active {
+  border-color: var(--asturan-gold);
+  color: var(--asturan-gold);
+}
+
+.asturan-catbar.asturan-catbar--burgundy .asturan-chip--sale {
+  background: var(--asturan-white);
+  border-color: var(--asturan-white);
+  color: var(--asturan-burgundy);
+}
+
 /* ---------- Category bar ---------- */
 
 .asturan-catbar {
@@ -433,6 +460,39 @@ body {
   }
 }
 
+@media screen and (min-width: 990px) {
+  .asturan-catbar.asturan-catbar--burgundy .asturan-catbar__group-name {
+    color: var(--asturan-gold);
+  }
+
+  .asturan-catbar.asturan-catbar--burgundy .asturan-catbar__link {
+    color: var(--asturan-white);
+    background-image: linear-gradient(var(--asturan-gold), var(--asturan-gold));
+  }
+
+  .asturan-catbar.asturan-catbar--burgundy .asturan-catbar__link:hover,
+  .asturan-catbar.asturan-catbar--burgundy .asturan-catbar__link.is-active,
+  .asturan-catbar.asturan-catbar--burgundy .asturan-catbar__group-name:hover {
+    color: var(--asturan-gold);
+  }
+
+  .asturan-catbar.asturan-catbar--burgundy .asturan-catbar__group + .asturan-catbar__group::before {
+    background: rgb(255 255 255 / 0.3);
+  }
+
+  .asturan-catbar.asturan-catbar--burgundy .asturan-btn--primary {
+    background: var(--asturan-white);
+    border-color: var(--asturan-white);
+    color: var(--asturan-burgundy);
+  }
+
+  .asturan-catbar.asturan-catbar--burgundy .asturan-btn--primary:hover {
+    background: var(--asturan-gold);
+    border-color: var(--asturan-gold);
+    color: var(--asturan-black);
+  }
+}
+
 /* ---------- Hero ---------- */
 
 .asturan-hero {
@@ -532,6 +592,88 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+/* Banner slideshow: slides stack and cross-fade */
+.asturan-slides {
+  position: absolute;
+  inset: 0;
+  display: grid;
+}
+
+.asturan-slide {
+  position: relative;
+  grid-area: 1 / 1;
+  display: block;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.8s ease,
+    visibility 0s linear 0.8s;
+}
+
+.asturan-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.8s ease;
+}
+
+.asturan-slides__dots {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+}
+
+.asturan-slides__dot {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.asturan-slides__dot::after {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 2px;
+  height: 3px;
+  margin: 0 auto;
+  background: rgb(255 255 255 / 0.85);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.18);
+  transition: background-color 0.3s ease;
+}
+
+.asturan-slides__dot[aria-current='true']::after {
+  background: var(--asturan-burgundy);
+}
+
+/* "Show the whole banner": the banner keeps its own proportions, nothing is cropped */
+.asturan-hero--fit-whole .asturan-hero__media {
+  min-height: 0 !important;
+}
+
+.asturan-hero--fit-whole .asturan-slides {
+  position: relative;
+  inset: auto;
+}
+
+.asturan-hero--fit-whole .asturan-hero__media picture,
+.asturan-hero--fit-whole .asturan-hero__img {
+  position: static;
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.asturan-hero--fit-whole .asturan-hero__media > picture,
+.asturan-hero--fit-whole .asturan-slide picture {
+  display: block;
 }
 
 /* Card style: a white editorial card over the photo */
@@ -930,18 +1072,26 @@ body {
   background: var(--asturan-cream);
 }
 
+/* Hover: the second photo cleanly replaces the first (no blending of the two photos). */
 .asturan-card__media .asturan-card__img {
-  mix-blend-mode: multiply;
+  transition: opacity 0.45s ease;
 }
 
 .asturan-card__media .asturan-card__img--hover {
   opacity: 0;
-  transition: opacity 0.4s ease;
 }
 
 @media (hover: hover) {
+  .asturan-card__media:has(.asturan-card__img--hover) .asturan-card__img:not(.asturan-card__img--hover) {
+    transition-delay: 0.05s;
+  }
+
+  .asturan-card__link:hover .asturan-card__media:has(.asturan-card__img--hover) .asturan-card__img {
+    opacity: 0;
+  }
+
   .asturan-card__link:hover .asturan-card__img--hover {
-    opacity: 1;
+    opacity: 1 !important;
   }
 }
 

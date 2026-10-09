@@ -103,7 +103,8 @@
     "asturan_logo_height": 140,
     "asturan_logo_height_mobile": 64,
     "asturan_bundled_logo": true,
-    "asturan_font_pairing": "presentation"
+    "asturan_font_pairing": "presentation",
+    "asturan_logo_variant": "gold"
   },
   "presets": {
     "Default": {

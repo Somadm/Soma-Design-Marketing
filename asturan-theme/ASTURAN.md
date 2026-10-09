@@ -27,6 +27,15 @@ in Theme settings → Asturan brand.
 in the footer), centred at the top at 140px tall on desktop and 64px on mobile. Change the size under
 Theme settings → Asturan brand. Uploading a logo under Logo and favicon replaces the built-in one.
 
+**Header:** burgundy background with the gold logo (Theme settings → Asturan brand → Logo colour), and a
+burgundy category bar under it (gold group names, white links, white Sale button). The category bar can be
+switched back to white in its section settings.
+
+**Hero banners:** the four Asturan campaign banners are included in the theme and rotate every 5 seconds,
+shown whole (never cropped), each linking to its collection. To use other banners, add Banner blocks to
+the hero in Customize (desktop and optional mobile image plus a link). For sharper banners on large
+screens, upload the original full-size files as Banner blocks.
+
 **Categories on the landing page:** every category is visible on the homepage without opening a menu:
 in the category bar under the logo (a scrollable button row on mobile), and in the 8 category tiles
 directly below the hero.

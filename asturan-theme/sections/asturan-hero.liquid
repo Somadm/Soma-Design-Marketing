@@ -1,6 +1,7 @@
 {%- comment -%}
-  Asturan hero: full-width campaign image with a small eyebrow heading, a large heading and two buttons.
-  Wrap a word in italics in the heading to show it in burgundy italic.
+  Asturan hero: full-width banner or a rotating set of banners (add Banner blocks), with optional text
+  (small heading, large heading, buttons). Wrap a word in italics in the heading to show it in burgundy italic.
+  With no banners and no image, the four Asturan banners included in the theme are shown.
 {%- endcomment -%}
 
 {%- liquid
@@ -11,11 +12,120 @@
 -%}
 
 <section
-  class="asturan-hero asturan-hero--style-{{ section.settings.style }} asturan-hero--layout-{{ section.settings.layout }} asturan-hero--{{ section.settings.content_position }} asturan-hero--height-{{ section.settings.height }}{% if section.settings.mobile_text_below %} asturan-hero--stack-mobile{% endif %} asturan-hero--text-{{ section.settings.text_theme }}"
+  class="asturan-hero asturan-hero--fit-{{ section.settings.image_fit }} asturan-hero--style-{{ section.settings.style }} asturan-hero--layout-{{ section.settings.layout }} asturan-hero--{{ section.settings.content_position }} asturan-hero--height-{{ section.settings.height }}{% if section.settings.mobile_text_below %} asturan-hero--stack-mobile{% endif %} asturan-hero--text-{{ section.settings.text_theme }}"
   style="--asturan-hero-overlay: {{ section.settings.overlay_opacity | divided_by: 100.0 }};"
 >
   <div class="asturan-hero__media">
-    {%- if desktop_image != blank -%}
+    {%- liquid
+      assign slide_count = section.blocks.size
+      assign use_bundled = false
+      if slide_count == 0 and desktop_image == blank and section.settings.use_bundled_banners
+        assign use_bundled = true
+        assign slide_count = 4
+      endif
+    -%}
+    {%- if slide_count > 0 -%}
+      <div
+        class="asturan-slides"
+        data-asturan-slideshow
+        data-interval="{{ section.settings.autoplay_seconds | times: 1000 }}"
+        role="region"
+        aria-roledescription="carousel"
+        aria-label="{{ section.settings.slideshow_label | escape }}"
+      >
+        {%- if use_bundled -%}
+          {%- for i in (1..4) -%}
+            {%- liquid
+              assign link_key = 'bundled_link_' | append: i
+              assign slide_url = section.settings[link_key]
+              assign banner = 'asturan-banner-' | append: i | append: '.jpg'
+            -%}
+            <a
+              class="asturan-slide{% if forloop.first %} is-active{% endif %}"
+              href="{{ slide_url | default: button_1_url }}"
+              {% unless forloop.first %}
+                aria-hidden="true" tabindex="-1"
+              {% endunless %}
+            >
+              <img
+                class="asturan-hero__img"
+                src="{{ banner | asset_url }}"
+                alt="{{ shop.name | escape }}"
+                width="1610"
+                height="977"
+                {% if forloop.first %}
+                  fetchpriority="high"
+                {% else %}
+                  loading="lazy"
+                {% endif %}
+              >
+            </a>
+          {%- endfor -%}
+        {%- else -%}
+          {%- for block in section.blocks -%}
+            {%- liquid
+              assign slide_image = block.settings.image
+              assign slide_url = block.settings.link | default: button_1_url
+            -%}
+            <a
+              class="asturan-slide{% if forloop.first %} is-active{% endif %}"
+              href="{{ slide_url }}"
+              {% unless forloop.first %}
+                aria-hidden="true" tabindex="-1"
+              {% endunless %}
+              {{ block.shopify_attributes }}
+            >
+              {%- if slide_image != blank -%}
+                <picture>
+                  {%- if block.settings.image_mobile != blank -%}
+                    <source
+                      media="(max-width: 749px)"
+                      srcset="{{ block.settings.image_mobile | image_url: width: 750 }} 750w, {{ block.settings.image_mobile | image_url: width: 1200 }} 1200w"
+                      sizes="100vw"
+                    >
+                  {%- endif -%}
+                  {%- liquid
+                    if forloop.first
+                      assign slide_loading = 'eager'
+                    else
+                      assign slide_loading = 'lazy'
+                    endif
+                  -%}
+                  {{
+                    slide_image
+                    | image_url: width: 3000
+                    | image_tag:
+                      widths: '750, 1100, 1500, 1800, 2400, 3000',
+                      sizes: '100vw',
+                      loading: slide_loading,
+                      class: 'asturan-hero__img',
+                      alt: slide_image.alt
+                  }}
+                </picture>
+              {%- else -%}
+                {{ 'lifestyle-1' | placeholder_svg_tag: 'asturan-hero__img asturan-placeholder' }}
+              {%- endif -%}
+            </a>
+          {%- endfor -%}
+        {%- endif -%}
+
+        {%- if slide_count > 1 -%}
+          <div class="asturan-slides__dots">
+            {%- for i in (1..slide_count) -%}
+              <button
+                type="button"
+                class="asturan-slides__dot"
+                data-asturan-slide-to="{{ forloop.index0 }}"
+                aria-label="{{ i }} / {{ slide_count }}"
+                {% if forloop.first %}
+                  aria-current="true"
+                {% endif %}
+              ></button>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+      </div>
+    {%- elsif desktop_image != blank -%}
       <picture>
         {%- if section.settings.image_mobile != blank -%}
           <source
@@ -34,7 +144,6 @@
             fetchpriority: 'high',
             class: 'asturan-hero__img',
             alt: desktop_image.alt
-          | default: ''
         }}
       </picture>
     {%- else -%}
@@ -42,6 +151,7 @@
     {%- endif -%}
   </div>
 
+  {%- if section.settings.style != 'none' -%}
   <div class="asturan-hero__content">
     <div class="asturan-hero__inner">
       {%- if section.settings.eyebrow != blank -%}
@@ -67,6 +177,7 @@
       </div>
     </div>
   </div>
+  {%- endif -%}
 </section>
 
 {% schema %}
@@ -74,7 +185,11 @@
   "name": "Asturan hero",
   "class": "asturan-section",
   "settings": [
-    { "type": "image_picker", "id": "image", "label": "Campaign image" },
+    {
+      "type": "paragraph",
+      "content": "Add Banner blocks for a rotating slideshow. With no banners and no image, the four Asturan banners included in the theme are shown."
+    },
+    { "type": "image_picker", "id": "image", "label": "Single image (when there are no banners)" },
     { "type": "image_picker", "id": "image_mobile", "label": "Mobile image (optional)", "info": "Portrait images work best on phones." },
     { "type": "text", "id": "eyebrow", "label": "Small heading", "default": "Summer Favorites." },
     {
@@ -92,12 +207,40 @@
     { "type": "text", "id": "button_2_label", "label": "Second button label", "default": "Shop Hijabs" },
     { "type": "collection", "id": "button_2_collection", "label": "Second button collection" },
     { "type": "url", "id": "button_2_url", "label": "Second button link (overrides collection)" },
+    { "type": "header", "content": "Banners" },
+    {
+      "type": "select",
+      "id": "image_fit",
+      "label": "Banner size",
+      "options": [
+        { "value": "whole", "label": "Show the whole banner" },
+        { "value": "cover", "label": "Fill the height (may crop the edges)" }
+      ],
+      "default": "whole"
+    },
+    {
+      "type": "range",
+      "id": "autoplay_seconds",
+      "label": "Change banner every",
+      "min": 3,
+      "max": 10,
+      "step": 1,
+      "unit": "s",
+      "default": 5
+    },
+    { "type": "text", "id": "slideshow_label", "label": "Slideshow accessible name", "default": "Featured collections" },
+    { "type": "checkbox", "id": "use_bundled_banners", "label": "Show the included Asturan banners when no banners are added", "default": true },
+    { "type": "url", "id": "bundled_link_1", "label": "Included banner 1 link" },
+    { "type": "url", "id": "bundled_link_2", "label": "Included banner 2 link" },
+    { "type": "url", "id": "bundled_link_3", "label": "Included banner 3 link" },
+    { "type": "url", "id": "bundled_link_4", "label": "Included banner 4 link" },
     { "type": "header", "content": "Layout" },
     {
       "type": "select",
       "id": "style",
       "label": "Text style",
       "options": [
+        { "value": "none", "label": "No text (banner only)" },
         { "value": "card", "label": "White card on the photo" },
         { "value": "panel", "label": "Dark panel on the left" },
         { "value": "plain", "label": "Text directly on the photo" }
@@ -161,6 +304,17 @@
       "id": "mobile_text_below",
       "label": "Show text below the image on mobile",
       "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "slide",
+      "name": "Banner",
+      "settings": [
+        { "type": "image_picker", "id": "image", "label": "Image" },
+        { "type": "image_picker", "id": "image_mobile", "label": "Mobile image (optional)" },
+        { "type": "url", "id": "link", "label": "Link" }
+      ]
     }
   ],
   "presets": [{ "name": "Asturan hero" }]

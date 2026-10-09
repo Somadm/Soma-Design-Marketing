@@ -191,7 +191,7 @@
 {%- endif -%}
 
 <nav
-  class="asturan-catbar{% if section.settings.hide_header_menu_desktop %} asturan-catbar--replaces-menu{% endif %}"
+  class="asturan-catbar asturan-catbar--{{ section.settings.color_scheme }}{% if section.settings.hide_header_menu_desktop %} asturan-catbar--replaces-menu{% endif %}"
   aria-label="{{ section.settings.aria_label | escape }}"
 >
   <ul class="asturan-catbar__desktop list-unstyled" role="list">
@@ -228,6 +228,16 @@
       "id": "aria_label",
       "label": "Accessible name",
       "default": "Shop by category"
+    },
+    {
+      "type": "select",
+      "id": "color_scheme",
+      "label": "Colours",
+      "options": [
+        { "value": "burgundy", "label": "Burgundy background" },
+        { "value": "light", "label": "White background" }
+      ],
+      "default": "burgundy"
     },
     {
       "type": "checkbox",

@@ -243,3 +243,67 @@ document.addEventListener(
   },
   true,
 );
+
+/* Hero banners: cross-fade every few seconds, pause on hover or focus, dots to jump. */
+function initSlideshows() {
+  document.querySelectorAll('[data-asturan-slideshow]').forEach((root) => {
+    if (!(root instanceof HTMLElement) || root.dataset.ready) return;
+    root.dataset.ready = 'true';
+
+    const slides = Array.from(root.querySelectorAll('.asturan-slide'));
+    const dots = Array.from(root.querySelectorAll('[data-asturan-slide-to]'));
+    if (slides.length < 2) return;
+
+    let index = 0;
+    let timer = 0;
+    const interval = Math.max(3000, Number(root.dataset.interval) || 5000);
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const show = (next) => {
+      index = (next + slides.length) % slides.length;
+      slides.forEach((slide, i) => {
+        const active = i === index;
+        slide.classList.toggle('is-active', active);
+        if (active) {
+          slide.removeAttribute('aria-hidden');
+          slide.removeAttribute('tabindex');
+          slide.querySelectorAll('img[loading="lazy"]').forEach((img) => img.setAttribute('loading', 'eager'));
+        } else {
+          slide.setAttribute('aria-hidden', 'true');
+          slide.setAttribute('tabindex', '-1');
+        }
+      });
+      dots.forEach((dot, i) => dot.setAttribute('aria-current', String(i === index)));
+      // Load the following banner ahead of time so the fade never shows an empty frame.
+      slides[(index + 1) % slides.length]
+        .querySelectorAll('img[loading="lazy"]')
+        .forEach((img) => img.setAttribute('loading', 'eager'));
+    };
+
+    const stop = () => window.clearInterval(timer);
+    const start = () => {
+      stop();
+      if (!reduceMotion) timer = window.setInterval(() => show(index + 1), interval);
+    };
+
+    dots.forEach((dot) =>
+      dot.addEventListener('click', () => {
+        show(Number(dot.getAttribute('data-asturan-slide-to')) || 0);
+        start();
+      }),
+    );
+    root.addEventListener('mouseenter', stop);
+    root.addEventListener('mouseleave', start);
+    root.addEventListener('focusin', stop);
+    root.addEventListener('focusout', start);
+    show(0);
+    start();
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSlideshows);
+} else {
+  initSlideshows();
+}
+document.addEventListener('shopify:section:load', initSlideshows);

@@ -57,8 +57,16 @@
   >
     {%- comment -%} Asturan: use the bundled brand logo until a logo is uploaded in Theme settings {%- endcomment -%}
     {%- if settings.logo == blank and settings.asturan_bundled_logo -%}
+      {%- liquid
+        assign logo_asset = 'asturan-logo-gold.png'
+        if settings.asturan_logo_variant == 'burgundy'
+          assign logo_asset = 'asturan-logo.png'
+        elsif settings.asturan_logo_variant == 'white'
+          assign logo_asset = 'asturan-logo-white.png'
+        endif
+      -%}
       <img
-        src="{{ 'asturan-logo.png' | asset_url }}"
+        src="{{ logo_asset | asset_url }}"
         alt="{{ shop.name | escape }}"
         class="header-logo__image asturan-header-logo"
         width="1000"

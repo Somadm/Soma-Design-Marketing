@@ -62,6 +62,26 @@
         "default": true
       },
       {
+        "type": "select",
+        "id": "asturan_logo_variant",
+        "label": "Logo colour",
+        "options": [
+          {
+            "value": "gold",
+            "label": "Gold (for a burgundy header)"
+          },
+          {
+            "value": "burgundy",
+            "label": "Burgundy (for a white header)"
+          },
+          {
+            "value": "white",
+            "label": "White"
+          }
+        ],
+        "default": "gold"
+      },
+      {
         "type": "range",
         "id": "asturan_logo_height",
         "label": "Logo height on desktop",

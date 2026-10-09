@@ -24,8 +24,16 @@
         "overlay_opacity": 0,
         "mobile_text_below": true,
         "layout": "full",
-        "style": "card",
-        "text": "<p>A premium modest fashion experience for women across North America.</p>"
+        "style": "none",
+        "text": "<p>A premium modest fashion experience for women across North America.</p>",
+        "image_fit": "whole",
+        "autoplay_seconds": 5,
+        "slideshow_label": "Featured collections",
+        "use_bundled_banners": true,
+        "bundled_link_1": "shopify://collections/open-abayas",
+        "bundled_link_2": "shopify://collections/open-abayas",
+        "bundled_link_3": "shopify://collections/closed-abayas",
+        "bundled_link_4": "shopify://collections/prayer-sets"
       }
     },
     "categories": {
