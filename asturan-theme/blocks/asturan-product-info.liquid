@@ -1,0 +1,66 @@
+{%- doc -%}
+  Content for an expandable product section (for example "Size & fit" or "Shipping & returns").
+  Shows the product's own metafield when it has one, otherwise the shared text below.
+{%- enddoc -%}
+
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  assign content = ''
+  if block.settings.source == 'description'
+    assign content = product.description
+  endif
+
+  if content == blank and block.settings.metafield_key != blank
+    assign key_parts = block.settings.metafield_key | strip | split: '.'
+    if key_parts.size == 2
+      assign field = product.metafields[key_parts[0]][key_parts[1]]
+      if field != blank
+        assign content = field | metafield_tag
+      endif
+    endif
+  endif
+
+  if content == blank
+    assign content = block.settings.text
+  endif
+-%}
+
+{%- if content != blank -%}
+  <div class="asturan-product-info rte" {{ block.shopify_attributes }}>{{ content }}</div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Asturan product info",
+  "tag": null,
+  "settings": [
+    {
+      "type": "select",
+      "id": "source",
+      "label": "Show",
+      "options": [
+        { "value": "description", "label": "Product description" },
+        { "value": "text", "label": "Metafield, then text below" }
+      ],
+      "default": "text"
+    },
+    {
+      "type": "text",
+      "id": "metafield_key",
+      "label": "Product metafield",
+      "info": "Optional, as namespace.key (for example custom.size_fit). Used when the product has a value."
+    },
+    { "type": "richtext", "id": "text", "label": "Text", "info": "Shown on every product without its own metafield value." }
+  ],
+  "presets": [
+    {
+      "name": "Asturan product info",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

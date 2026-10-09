@@ -1,0 +1,57 @@
+{%- doc -%}
+  Size guide link that opens the size guide page in a dialog. Falls back to a normal link without JavaScript.
+{%- enddoc -%}
+
+{%- liquid
+  assign guide_page = block.settings.page | default: settings.asturan_size_guide_page
+  assign dialog_id = 'AsturanSizeGuide-' | append: block.id
+-%}
+
+{%- if guide_page != blank -%}
+  <div class="asturan-size-guide" {{ block.shopify_attributes }}>
+    <a
+      class="asturan-size-guide__link"
+      href="{{ guide_page.url }}"
+      data-asturan-dialog-open="{{ dialog_id }}"
+      aria-haspopup="dialog"
+    >
+      <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2.5" y="7" width="19" height="10" rx="1"/><path d="M6.5 7v4M10.5 7v3M14.5 7v4M18.5 7v3"/></svg>
+      {{- block.settings.label | escape -}}
+    </a>
+    <dialog id="{{ dialog_id }}" class="asturan-dialog" aria-labelledby="{{ dialog_id }}-title">
+      <div class="asturan-dialog__header">
+        <h2 id="{{ dialog_id }}-title" class="asturan-dialog__title">{{ guide_page.title | escape }}</h2>
+        <button type="button" class="asturan-dialog__close" data-asturan-dialog-close aria-label="{{ 'actions.close' | t }}">
+          {{- 'icon-close.svg' | inline_asset_content -}}
+        </button>
+      </div>
+      <div class="asturan-dialog__body rte">{{ guide_page.content }}</div>
+    </dialog>
+  </div>
+{%- elsif request.design_mode -%}
+  <p class="asturan-size-guide" {{ block.shopify_attributes }}>
+    <span class="asturan-size-guide__link">{{ block.settings.label | escape }} (choose a size guide page)</span>
+  </p>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Asturan size guide",
+  "tag": null,
+  "settings": [
+    { "type": "text", "id": "label", "label": "Link label", "default": "Size guide" },
+    {
+      "type": "page",
+      "id": "page",
+      "label": "Size guide page",
+      "info": "Leave empty to use the page set in Theme settings > Asturan brand."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Asturan size guide",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

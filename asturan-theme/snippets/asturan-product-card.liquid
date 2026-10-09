@@ -1,0 +1,126 @@
+{%- doc -%}
+  Asturan product card: arched image, colour-swatch dots, name and price.
+
+  @param {product} product - The product to show
+  @param {string} [sizes] - The image sizes attribute
+  @param {boolean} [arch] - Use the arched image frame (default true)
+  @param {boolean} [lazy] - Lazy-load the image (default true)
+{%- enddoc -%}
+
+{%- liquid
+  assign colour_names = settings.asturan_color_option_names | default: 'Color,Colour' | downcase | split: ','
+  assign colour_option = nil
+  for option in product.options_with_values
+    assign option_name = option.name | downcase | strip
+    for name in colour_names
+      assign clean_name = name | strip
+      if option_name == clean_name
+        assign colour_option = option
+        break
+      endif
+    endfor
+    if colour_option
+      break
+    endif
+  endfor
+
+  assign image = product.featured_media.preview_image
+  assign hover_image = product.media[1].preview_image
+  assign image_sizes = sizes | default: '(min-width: 990px) 25vw, 50vw'
+  assign loading = 'lazy'
+  if lazy == false
+    assign loading = 'eager'
+  endif
+  assign arch_class = 'asturan-arch'
+  if arch == false
+    assign arch_class = 'asturan-rect'
+  endif
+  assign max_dots = 5
+-%}
+
+<article class="asturan-card">
+  <a class="asturan-card__link" href="{{ product.url }}">
+    <div class="{{ arch_class }} asturan-card__media">
+      {%- if image != blank -%}
+        {{
+          image
+          | image_url: width: 900
+          | image_tag:
+            widths: '300, 450, 600, 900',
+            sizes: image_sizes,
+            loading: loading,
+            class: 'asturan-card__img',
+            alt: product.title
+        }}
+        {%- if hover_image != blank -%}
+          {{
+            hover_image
+            | image_url: width: 900
+            | image_tag:
+              widths: '300, 450, 600, 900',
+              sizes: image_sizes,
+              loading: 'lazy',
+              class: 'asturan-card__img asturan-card__img--hover',
+              alt: '',
+              role: 'presentation'
+          }}
+        {%- endif -%}
+      {%- else -%}
+        {{ 'product-apparel-1' | placeholder_svg_tag: 'asturan-placeholder' }}
+      {%- endif -%}
+
+      {%- if product.available == false -%}
+        <span class="asturan-badge">{{ 'content.product_badge_sold_out' | t }}</span>
+      {%- elsif product.compare_at_price > product.price -%}
+        <span class="asturan-badge asturan-badge--sale">{{ 'content.product_badge_sale' | t }}</span>
+      {%- endif -%}
+    </div>
+
+    <div class="asturan-card__info">
+      {%- if colour_option and colour_option.values.size > 0 -%}
+        <ul
+          class="asturan-dots list-unstyled"
+          role="list"
+          aria-label="{{ colour_option.values.size }} {{ colour_option.name | escape }}"
+        >
+          {%- for value in colour_option.values limit: max_dots -%}
+            {%- liquid
+              assign css_name = value | downcase | remove: ' ' | remove: '-'
+              if value.swatch.image
+                assign swatch_url = value.swatch.image | image_url: width: 40
+                assign dot_style = 'background-image: url(' | append: swatch_url | append: ');'
+              elsif value.swatch.color
+                assign dot_style = 'background-color: ' | append: value.swatch.color | append: ';'
+              else
+                assign dot_style = 'background-color: #e6dfd8; background-color: ' | append: css_name | append: ';'
+              endif
+            -%}
+            <li class="asturan-dot" style="{{ dot_style }}" title="{{ value | escape }}">
+              <span class="visually-hidden">{{ value | escape }}</span>
+            </li>
+          {%- endfor -%}
+          {%- if colour_option.values.size > max_dots -%}
+            <li class="asturan-dots__more">+{{ colour_option.values.size | minus: max_dots }}</li>
+          {%- endif -%}
+        </ul>
+      {%- endif -%}
+
+      <h3 class="asturan-card__title">{{ product.title | escape }}</h3>
+
+      <p class="asturan-card__price">
+        {%- liquid
+          assign price = product.price | money
+          if product.price_varies
+            assign price = 'content.price_from' | t: price: price
+          endif
+        -%}
+        {%- if product.compare_at_price > product.price -%}
+          <span class="asturan-price asturan-price--sale">{{ price }}</span>
+          <s class="asturan-price asturan-price--compare">{{ product.compare_at_price | money }}</s>
+        {%- else -%}
+          <span class="asturan-price">{{ price }}</span>
+        {%- endif -%}
+      </p>
+    </div>
+  </a>
+</article>

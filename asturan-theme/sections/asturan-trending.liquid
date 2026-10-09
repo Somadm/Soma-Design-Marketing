@@ -1,0 +1,80 @@
+{%- comment -%}
+  Asturan product row (Trending Products): products from a collection with colour-swatch dots, name and price,
+  plus a "View all" link. 2 per row on mobile, up to 4 on desktop.
+{%- endcomment -%}
+
+{%- liquid
+  assign collection = section.settings.collection
+  assign view_all_url = section.settings.view_all_url | default: collection.url | default: routes.all_products_collection_url
+  assign limit = section.settings.products_to_show
+-%}
+
+<section class="asturan-section asturan-products">
+  <div class="asturan-container">
+    <div class="asturan-section-head">
+      {%- if section.settings.heading != blank -%}
+        <h2 class="asturan-section-head__title">{{ section.settings.heading | escape }}</h2>
+      {%- endif -%}
+      {%- if section.settings.view_all_label != blank -%}
+        <a class="asturan-link" href="{{ view_all_url }}">{{ section.settings.view_all_label | escape }}</a>
+      {%- endif -%}
+    </div>
+
+    <ul
+      class="asturan-grid list-unstyled{% if section.settings.scroll_on_mobile %} asturan-grid--scroll-mobile{% endif %}"
+      role="list"
+    >
+      {%- if collection != blank and collection.products_count > 0 -%}
+        {%- for product in collection.products limit: limit -%}
+          <li class="asturan-grid__item">
+            {% render 'asturan-product-card', product: product, arch: section.settings.arch_images %}
+          </li>
+        {%- endfor -%}
+      {%- else -%}
+        {%- for i in (1..limit) -%}
+          <li class="asturan-grid__item">
+            <div class="asturan-card">
+              <div class="asturan-arch asturan-card__media">
+                {{ 'product-apparel-' | append: i | placeholder_svg_tag: 'asturan-placeholder' }}
+              </div>
+              <div class="asturan-card__info">
+                <h3 class="asturan-card__title">Choose a collection</h3>
+                <p class="asturan-card__price">{{ 12900 | money }}</p>
+              </div>
+            </div>
+          </li>
+        {%- endfor -%}
+      {%- endif -%}
+    </ul>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Asturan product row",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Trending Products" },
+    { "type": "collection", "id": "collection", "label": "Collection" },
+    {
+      "type": "range",
+      "id": "products_to_show",
+      "label": "Products to show",
+      "min": 2,
+      "max": 8,
+      "step": 2,
+      "default": 4
+    },
+    { "type": "text", "id": "view_all_label", "label": "View all label", "default": "View all" },
+    { "type": "url", "id": "view_all_url", "label": "View all link (overrides collection)" },
+    { "type": "checkbox", "id": "arch_images", "label": "Arched images", "default": true },
+    {
+      "type": "checkbox",
+      "id": "scroll_on_mobile",
+      "label": "Scroll sideways on mobile",
+      "info": "Off shows a 2-column grid on mobile.",
+      "default": false
+    }
+  ],
+  "presets": [{ "name": "Asturan product row" }]
+}
+{% endschema %}

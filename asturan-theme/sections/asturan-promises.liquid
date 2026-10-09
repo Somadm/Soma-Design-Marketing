@@ -1,0 +1,46 @@
+{%- comment -%}
+  Asturan store promises: up to 4 columns, each with a gold top line, a title and a short line of text.
+{%- endcomment -%}
+
+<section class="asturan-section asturan-promises">
+  <div class="asturan-container">
+    <ul class="asturan-promises__grid list-unstyled" role="list">
+      {%- for block in section.blocks -%}
+        <li class="asturan-promise" {{ block.shopify_attributes }}>
+          <h3 class="asturan-promise__title">{{ block.settings.title | escape }}</h3>
+          {%- if block.settings.text != blank -%}
+            <div class="asturan-promise__text">{{ block.settings.text }}</div>
+          {%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Asturan store promises",
+  "max_blocks": 4,
+  "blocks": [
+    {
+      "type": "promise",
+      "name": "Promise",
+      "settings": [
+        { "type": "text", "id": "title", "label": "Title", "default": "Low Shipping Prices" },
+        { "type": "richtext", "id": "text", "label": "Text" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Asturan store promises",
+      "blocks": [
+        { "type": "promise", "settings": { "title": "Low Shipping Prices" } },
+        { "type": "promise", "settings": { "title": "Flexible Payment" } },
+        { "type": "promise", "settings": { "title": "14 Day Returns" } },
+        { "type": "promise", "settings": { "title": "Premium Support" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

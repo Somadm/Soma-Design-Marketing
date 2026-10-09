@@ -1,0 +1,40 @@
+{%- doc -%}
+  Small burgundy category label above the product name (for example "Abayas · Open").
+  Uses the text below if set; otherwise the product type, then the product's first collection.
+{%- enddoc -%}
+
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+  assign label = block.settings.text
+  if label == blank
+    assign label = product.type | default: product.collections.first.title
+  endif
+-%}
+
+{%- if label != blank -%}
+  <p class="asturan-label asturan-pdp-label" {{ block.shopify_attributes }}>{{ label | escape }}</p>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Asturan category label",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "text",
+      "label": "Label",
+      "info": "Leave empty to use the product type, or the product's first collection."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Asturan category label",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

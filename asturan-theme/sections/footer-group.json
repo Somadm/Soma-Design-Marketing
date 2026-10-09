@@ -1,0 +1,36 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "type": "footer",
+  "name": "t:names.footer",
+  "sections": {
+    "asturan_footer": {
+      "type": "asturan-footer",
+      "settings": {
+        "signup_heading": "Join our email list",
+        "signup_placeholder": "Email address",
+        "signup_button": "Sign up",
+        "signup_success": "Thank you for joining.",
+        "shop_heading": "Shop",
+        "shop_menu": "main-menu",
+        "help_heading": "Help",
+        "help_menu": "footer",
+        "contact_heading": "Contact",
+        "instagram_url": "https://www.instagram.com/shop.asturan",
+        "tiktok_url": "https://www.tiktok.com/@shop.asturan",
+        "social_handle": "@shop.asturan",
+        "show_payment_icons": true
+      }
+    }
+  },
+  "order": [
+    "asturan_footer"
+  ]
+}

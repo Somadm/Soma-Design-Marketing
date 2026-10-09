@@ -1,0 +1,207 @@
+{%- comment -%}
+  Asturan category bar. Sits directly under the header so every category is visible without opening a menu.
+  Desktop: group names in burgundy followed by their collections, ending with a burgundy Sale button.
+  Mobile: a horizontally scrollable row of category buttons ending with the Sale button.
+
+  Block order sets the layout: each "Category group" is followed by its "Collection link" blocks.
+{%- endcomment -%}
+
+{%- liquid
+  assign current_path = request.path
+-%}
+
+{%- capture desktop_items -%}
+  {%- assign in_group = false -%}
+  {%- assign last_index = section.blocks.size | minus: 1 -%}
+  {%- for block in section.blocks -%}
+    {%- liquid
+      assign link_url = block.settings.url | default: block.settings.collection.url | default: routes.all_products_collection_url
+      assign is_active = false
+      if current_path == link_url
+        assign is_active = true
+      endif
+    -%}
+    {%- case block.type -%}
+      {%- when 'group' -%}
+        {%- assign in_group = true -%}
+        {%- assign first_child = forloop.index -%}
+        <li class="asturan-catbar__group" {{ block.shopify_attributes }}>
+          <a
+            class="asturan-catbar__group-name{% if is_active %} is-active{% endif %}"
+            href="{{ link_url }}"
+            {% if is_active %}
+              aria-current="page"
+            {% endif %}
+          >
+            {{- block.settings.label | escape -}}
+          </a>
+          {%- comment -%} The collection links that follow this group, up to the next group or Sale button {%- endcomment -%}
+          {%- capture group_links -%}
+            {%- for i in (first_child..last_index) -%}
+              {%- assign child = section.blocks[i] -%}
+              {%- if child.type != 'link' -%}
+                {%- break -%}
+              {%- endif -%}
+              {%- assign child_url = child.settings.url | default: child.settings.collection.url | default: routes.all_products_collection_url -%}
+              <a
+                class="asturan-catbar__link{% if current_path == child_url %} is-active{% endif %}"
+                href="{{ child_url }}"
+                {% if current_path == child_url %}
+                  aria-current="page"
+                {% endif %}
+                {{ child.shopify_attributes }}
+              >
+                {{- child.settings.label | escape -}}
+              </a>
+            {%- endfor -%}
+          {%- endcapture -%}
+          {%- if group_links != blank -%}
+            <span class="asturan-catbar__links">{{ group_links }}</span>
+          {%- endif -%}
+        </li>
+      {%- when 'link' -%}
+        {%- comment -%} Links under a group are drawn with that group above {%- endcomment -%}
+        {%- unless in_group -%}
+          <li class="asturan-catbar__group" {{ block.shopify_attributes }}>
+            <a
+              class="asturan-catbar__link{% if is_active %} is-active{% endif %}"
+              href="{{ link_url }}"
+              {% if is_active %}
+                aria-current="page"
+              {% endif %}
+            >
+              {{- block.settings.label | escape -}}
+            </a>
+          </li>
+        {%- endunless -%}
+      {%- when 'sale' -%}
+        {%- assign in_group = false -%}
+        <li class="asturan-catbar__sale-item" {{ block.shopify_attributes }}>
+          <a class="asturan-btn asturan-btn--primary asturan-btn--small" href="{{ link_url }}">
+            {{- block.settings.label | escape -}}
+          </a>
+        </li>
+    {%- endcase -%}
+  {%- endfor -%}
+{%- endcapture -%}
+
+{%- capture mobile_items -%}
+  {%- for block in section.blocks -%}
+    {%- liquid
+      assign link_url = block.settings.url | default: block.settings.collection.url | default: routes.all_products_collection_url
+      assign next_index = forloop.index
+      assign next_block = section.blocks[next_index]
+      assign label = block.settings.mobile_label | default: block.settings.label
+      assign is_active = false
+      if current_path == link_url
+        assign is_active = true
+      endif
+    -%}
+    {%- comment -%} A group shows as its own button only when it has no collection links after it {%- endcomment -%}
+    {%- if block.type == 'group' and next_block.type == 'link' -%}
+      {%- continue -%}
+    {%- endif -%}
+    <li>
+      <a
+        class="asturan-chip{% if block.type == 'sale' %} asturan-chip--sale{% endif %}{% if is_active %} is-active{% endif %}"
+        href="{{ link_url }}"
+        {% if is_active %}
+          aria-current="page"
+        {% endif %}
+      >
+        {{- label | escape -}}
+      </a>
+    </li>
+  {%- endfor -%}
+{%- endcapture -%}
+
+<nav
+  class="asturan-catbar{% if section.settings.hide_header_menu_desktop %} asturan-catbar--replaces-menu{% endif %}"
+  aria-label="{{ section.settings.aria_label | escape }}"
+>
+  <ul class="asturan-catbar__desktop list-unstyled" role="list">
+    {{ desktop_items }}
+  </ul>
+  <div class="asturan-catbar__mobile">
+    <ul class="asturan-catbar__chips list-unstyled" role="list">
+      {{ mobile_items }}
+    </ul>
+  </div>
+</nav>
+
+{% schema %}
+{
+  "name": "Asturan category bar",
+  "class": "asturan-catbar-section",
+  "enabled_on": {
+    "groups": ["header"]
+  },
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "Add a Category group, then the Collection links that belong to it. On mobile, each collection link becomes a button in a scrollable row."
+    },
+    {
+      "type": "text",
+      "id": "aria_label",
+      "label": "Accessible name",
+      "default": "Shop by category"
+    },
+    {
+      "type": "checkbox",
+      "id": "hide_header_menu_desktop",
+      "label": "Hide the header menu on desktop",
+      "info": "The category bar replaces the header menu on desktop. The mobile menu drawer stays available.",
+      "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "group",
+      "name": "Category group",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Group name", "default": "Abayas" },
+        { "type": "text", "id": "mobile_label", "label": "Mobile button label", "info": "Used only when the group has no collection links after it." },
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "url", "id": "url", "label": "Link (overrides collection)" }
+      ]
+    },
+    {
+      "type": "link",
+      "name": "Collection link",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Label", "default": "Open" },
+        { "type": "text", "id": "mobile_label", "label": "Mobile button label", "default": "Open Abayas" },
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "url", "id": "url", "label": "Link (overrides collection)" }
+      ]
+    },
+    {
+      "type": "sale",
+      "name": "Sale button",
+      "limit": 1,
+      "settings": [
+        { "type": "text", "id": "label", "label": "Label", "default": "Sale" },
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "url", "id": "url", "label": "Link (overrides collection)" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Asturan category bar",
+      "blocks": [
+        { "type": "group", "settings": { "label": "Abayas" } },
+        { "type": "link", "settings": { "label": "Open", "mobile_label": "Open Abayas" } },
+        { "type": "link", "settings": { "label": "Closed", "mobile_label": "Closed Abayas" } },
+        { "type": "link", "settings": { "label": "Crepe", "mobile_label": "Crepe Abayas" } },
+        { "type": "group", "settings": { "label": "Hijabs" } },
+        { "type": "link", "settings": { "label": "Chiffon", "mobile_label": "Chiffon Hijabs" } },
+        { "type": "link", "settings": { "label": "Print", "mobile_label": "Print Hijabs" } },
+        { "type": "group", "settings": { "label": "Prayer Sets", "mobile_label": "Prayer Sets" } },
+        { "type": "sale", "settings": { "label": "Sale" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

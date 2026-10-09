@@ -1,0 +1,143 @@
+{%- comment -%}
+  Asturan hero: full-width campaign image with a small eyebrow heading, a large heading and two buttons.
+  Wrap a word in italics in the heading to show it in burgundy italic.
+{%- endcomment -%}
+
+{%- liquid
+  assign desktop_image = section.settings.image
+  assign mobile_image = section.settings.image_mobile | default: desktop_image
+  assign button_1_url = section.settings.button_1_url | default: section.settings.button_1_collection.url | default: routes.all_products_collection_url
+  assign button_2_url = section.settings.button_2_url | default: section.settings.button_2_collection.url | default: routes.all_products_collection_url
+-%}
+
+<section
+  class="asturan-hero asturan-hero--{{ section.settings.content_position }} asturan-hero--height-{{ section.settings.height }}{% if section.settings.mobile_text_below %} asturan-hero--stack-mobile{% endif %} asturan-hero--text-{{ section.settings.text_theme }}"
+  style="--asturan-hero-overlay: {{ section.settings.overlay_opacity | divided_by: 100.0 }};"
+>
+  <div class="asturan-hero__media">
+    {%- if desktop_image != blank -%}
+      <picture>
+        {%- if section.settings.image_mobile != blank -%}
+          <source
+            media="(max-width: 749px)"
+            srcset="{{ mobile_image | image_url: width: 750 }} 750w, {{ mobile_image | image_url: width: 1100 }} 1100w, {{ mobile_image | image_url: width: 1500 }} 1500w"
+            sizes="100vw"
+          >
+        {%- endif -%}
+        {{
+          desktop_image
+          | image_url: width: 3000
+          | image_tag:
+            widths: '750, 1100, 1500, 1800, 2400, 3000',
+            sizes: '100vw',
+            loading: 'eager',
+            fetchpriority: 'high',
+            class: 'asturan-hero__img',
+            alt: desktop_image.alt
+          | default: ''
+        }}
+      </picture>
+    {%- else -%}
+      {{ 'lifestyle-1' | placeholder_svg_tag: 'asturan-hero__img asturan-placeholder' }}
+    {%- endif -%}
+  </div>
+
+  <div class="asturan-hero__content">
+    <div class="asturan-hero__inner">
+      {%- if section.settings.eyebrow != blank -%}
+        <p class="asturan-hero__eyebrow">{{ section.settings.eyebrow | escape }}</p>
+      {%- endif -%}
+      {%- if section.settings.heading != blank -%}
+        <h1 class="asturan-hero__heading">{{ section.settings.heading }}</h1>
+      {%- endif -%}
+      <div class="asturan-hero__buttons">
+        {%- if section.settings.button_1_label != blank -%}
+          <a class="asturan-btn asturan-btn--primary" href="{{ button_1_url }}">
+            {{- section.settings.button_1_label | escape -}}
+          </a>
+        {%- endif -%}
+        {%- if section.settings.button_2_label != blank -%}
+          <a class="asturan-btn asturan-btn--outline" href="{{ button_2_url }}">
+            {{- section.settings.button_2_label | escape -}}
+          </a>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Asturan hero",
+  "class": "asturan-section",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Campaign image" },
+    { "type": "image_picker", "id": "image_mobile", "label": "Mobile image (optional)", "info": "Portrait images work best on phones." },
+    { "type": "text", "id": "eyebrow", "label": "Small heading", "default": "Summer Favorites." },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "Large heading",
+      "info": "Text in italics shows in burgundy italic.",
+      "default": "Home of <em>Modest</em> fashion."
+    },
+    { "type": "header", "content": "Buttons" },
+    { "type": "text", "id": "button_1_label", "label": "First button label", "default": "Shop Abayas" },
+    { "type": "collection", "id": "button_1_collection", "label": "First button collection" },
+    { "type": "url", "id": "button_1_url", "label": "First button link (overrides collection)" },
+    { "type": "text", "id": "button_2_label", "label": "Second button label", "default": "Shop Hijabs" },
+    { "type": "collection", "id": "button_2_collection", "label": "Second button collection" },
+    { "type": "url", "id": "button_2_url", "label": "Second button link (overrides collection)" },
+    { "type": "header", "content": "Layout" },
+    {
+      "type": "select",
+      "id": "height",
+      "label": "Height",
+      "options": [
+        { "value": "medium", "label": "Medium" },
+        { "value": "large", "label": "Large" },
+        { "value": "full", "label": "Full screen" }
+      ],
+      "default": "large"
+    },
+    {
+      "type": "select",
+      "id": "content_position",
+      "label": "Text position on desktop",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Centre" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "text_theme",
+      "label": "Text on the image",
+      "options": [
+        { "value": "dark", "label": "Dark text (light photos)" },
+        { "value": "light", "label": "White text (dark photos)" }
+      ],
+      "default": "dark"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Image wash behind the text",
+      "min": 0,
+      "max": 60,
+      "step": 5,
+      "unit": "%",
+      "default": 30
+    },
+    {
+      "type": "checkbox",
+      "id": "mobile_text_below",
+      "label": "Show text below the image on mobile",
+      "default": true
+    }
+  ],
+  "presets": [{ "name": "Asturan hero" }]
+}
+{% endschema %}

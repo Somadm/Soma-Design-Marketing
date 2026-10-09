@@ -1,0 +1,138 @@
+{%- doc -%}
+  "Complete the look": a matching product (usually a hijab) with a one-click Add button.
+  The product comes from, in order: the product's own metafield, the product chosen here, or the first
+  available product in the fallback collection.
+{%- enddoc -%}
+
+{%- liquid
+  assign current = closest.product
+  if request.visual_preview_mode and current == blank
+    assign current = collections.all.products.first
+  endif
+
+  assign match = nil
+  assign key_parts = block.settings.metafield_key | strip | split: '.'
+  if key_parts.size == 2
+    assign field = current.metafields[key_parts[0]][key_parts[1]]
+    if field.type == 'list.product_reference'
+      for candidate in field.value
+        if candidate.available and candidate.id != current.id
+          assign match = candidate
+          break
+        endif
+      endfor
+    elsif field.type == 'product_reference'
+      assign match = field.value
+    endif
+  endif
+
+  if match == nil and block.settings.product != blank and block.settings.product.id != current.id
+    assign match = block.settings.product
+  endif
+
+  if match == nil and block.settings.collection != blank
+    for candidate in block.settings.collection.products limit: 12
+      if candidate.available and candidate.id != current.id
+        assign match = candidate
+        break
+      endif
+    endfor
+  endif
+
+  assign variant = match.selected_or_first_available_variant
+  assign form_id = 'AsturanLookForm-' | append: block.id
+-%}
+
+{%- if match != nil and match.available -%}
+  <div class="asturan-ctl" {{ block.shopify_attributes }}>
+    <h2 class="asturan-ctl__heading">{{ block.settings.heading | escape }}</h2>
+    <div class="asturan-ctl__item">
+      <a class="asturan-arch asturan-ctl__media" href="{{ match.url }}" tabindex="-1" aria-hidden="true">
+        {%- if match.featured_media -%}
+          {{
+            match.featured_media.preview_image
+            | image_url: width: 240
+            | image_tag: widths: '120, 180, 240', sizes: '96px', loading: 'lazy', alt: ''
+          }}
+        {%- else -%}
+          {{ 'product-apparel-1' | placeholder_svg_tag: 'asturan-placeholder' }}
+        {%- endif -%}
+      </a>
+      <div class="asturan-ctl__info">
+        <a class="asturan-ctl__title" href="{{ match.url }}">{{ match.title | escape }}</a>
+        <span class="asturan-ctl__price" data-asturan-ctl-price>{{ variant.price | money }}</span>
+
+        <form
+          id="{{ form_id }}"
+          class="asturan-ctl__form"
+          action="{{ routes.cart_add_url }}"
+          method="post"
+          accept-charset="UTF-8"
+          data-asturan-quick-add
+        >
+          <input type="hidden" name="quantity" value="1">
+          {%- if match.has_only_default_variant -%}
+            <input type="hidden" name="id" value="{{ variant.id }}">
+          {%- else -%}
+            <label class="visually-hidden" for="{{ form_id }}-variant">{{ match.options | join: ' / ' | escape }}</label>
+            <select id="{{ form_id }}-variant" class="asturan-ctl__select" name="id">
+              {%- for v in match.variants -%}
+                <option
+                  value="{{ v.id }}"
+                  data-price="{{ v.price | money | escape }}"
+                  {% if v.id == variant.id %}
+                    selected
+                  {% endif %}
+                  {% unless v.available %}
+                    disabled
+                  {% endunless %}
+                >
+                  {{ v.title | escape }}
+                </option>
+              {%- endfor -%}
+            </select>
+          {%- endif -%}
+          <button type="submit" class="asturan-btn asturan-btn--outline asturan-btn--small" data-label-added="{{ 'actions.added' | t | escape }}">
+            {{- block.settings.button_label | escape -}}
+          </button>
+        </form>
+        <p class="asturan-ctl__status" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+  </div>
+{%- elsif request.design_mode -%}
+  <p class="asturan-ctl asturan-ctl--empty" {{ block.shopify_attributes }}>
+    Complete the look: choose a product or a fallback collection.
+  </p>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Asturan complete the look",
+  "tag": null,
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Complete the look" },
+    { "type": "text", "id": "button_label", "label": "Button label", "default": "Add" },
+    {
+      "type": "text",
+      "id": "metafield_key",
+      "label": "Product metafield",
+      "default": "custom.complete_the_look",
+      "info": "A product (or list of products) metafield on each abaya, as namespace.key. Takes priority when set."
+    },
+    { "type": "product", "id": "product", "label": "Default matching product" },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Fallback collection",
+      "info": "The first available product here is shown when nothing else is set (for example Chiffon Hijabs)."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Asturan complete the look",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,199 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "hero": {
+      "type": "asturan-hero",
+      "settings": {
+        "eyebrow": "Summer Favorites.",
+        "heading": "Home of <em>Modest</em> fashion.",
+        "button_1_label": "Shop Abayas",
+        "button_1_collection": "abayas",
+        "button_2_label": "Shop Hijabs",
+        "button_2_collection": "hijabs",
+        "height": "large",
+        "content_position": "left",
+        "text_theme": "dark",
+        "overlay_opacity": 30,
+        "mobile_text_below": true
+      }
+    },
+    "categories": {
+      "type": "asturan-category-tiles",
+      "blocks": {
+        "tile_1": {
+          "type": "tile",
+          "settings": {
+            "group_label": "Abayas",
+            "title": "Open Abayas",
+            "collection": "open-abayas",
+            "style": "image",
+            "solid_text": "Sale"
+          }
+        },
+        "tile_2": {
+          "type": "tile",
+          "settings": {
+            "group_label": "Abayas",
+            "title": "Closed Abayas",
+            "collection": "closed-abayas",
+            "style": "image",
+            "solid_text": "Sale"
+          }
+        },
+        "tile_3": {
+          "type": "tile",
+          "settings": {
+            "group_label": "Abayas",
+            "title": "Crepe Abayas",
+            "collection": "crepe-abayas",
+            "style": "image",
+            "solid_text": "Sale"
+          }
+        },
+        "tile_4": {
+          "type": "tile",
+          "settings": {
+            "group_label": "Hijabs",
+            "title": "Chiffon Hijabs",
+            "collection": "chiffon-hijabs",
+            "style": "image",
+            "solid_text": "Sale"
+          }
+        },
+        "tile_5": {
+          "type": "tile",
+          "settings": {
+            "group_label": "Hijabs",
+            "title": "Print Hijabs",
+            "collection": "print-hijabs",
+            "style": "image",
+            "solid_text": "Sale"
+          }
+        },
+        "tile_6": {
+          "type": "tile",
+          "settings": {
+            "group_label": "Prayer",
+            "title": "Prayer Sets",
+            "collection": "prayer-sets",
+            "style": "image",
+            "solid_text": "Sale"
+          }
+        },
+        "tile_7": {
+          "type": "tile",
+          "settings": {
+            "group_label": "Just in",
+            "title": "New & Trending",
+            "collection": "new-trending",
+            "style": "image",
+            "solid_text": "Sale"
+          }
+        },
+        "tile_8": {
+          "type": "tile",
+          "settings": {
+            "group_label": "Offers",
+            "title": "Sale",
+            "collection": "sale",
+            "style": "solid",
+            "solid_text": "Sale"
+          }
+        }
+      },
+      "block_order": [
+        "tile_1",
+        "tile_2",
+        "tile_3",
+        "tile_4",
+        "tile_5",
+        "tile_6",
+        "tile_7",
+        "tile_8"
+      ],
+      "settings": {
+        "heading": "Shop by category",
+        "columns_desktop": 4
+      }
+    },
+    "trending": {
+      "type": "asturan-trending",
+      "settings": {
+        "heading": "Trending Products",
+        "collection": "new-trending",
+        "products_to_show": 4,
+        "view_all_label": "View all",
+        "arch_images": true,
+        "scroll_on_mobile": false
+      }
+    },
+    "shop_the_look": {
+      "type": "asturan-shop-the-look",
+      "blocks": {
+        "look_1": {
+          "type": "look",
+          "settings": {
+            "eyebrow": "Shop the look",
+            "button_label": "Shop now",
+            "image_position": "left"
+          }
+        }
+      },
+      "block_order": [
+        "look_1"
+      ],
+      "settings": {}
+    },
+    "promises": {
+      "type": "asturan-promises",
+      "blocks": {
+        "promise_1": {
+          "type": "promise",
+          "settings": {
+            "title": "Low Shipping Prices"
+          }
+        },
+        "promise_2": {
+          "type": "promise",
+          "settings": {
+            "title": "Flexible Payment"
+          }
+        },
+        "promise_3": {
+          "type": "promise",
+          "settings": {
+            "title": "14 Day Returns"
+          }
+        },
+        "promise_4": {
+          "type": "promise",
+          "settings": {
+            "title": "Premium Support"
+          }
+        }
+      },
+      "block_order": [
+        "promise_1",
+        "promise_2",
+        "promise_3",
+        "promise_4"
+      ],
+      "settings": {}
+    }
+  },
+  "order": [
+    "hero",
+    "categories",
+    "trending",
+    "shop_the_look",
+    "promises"
+  ]
+}

@@ -1,0 +1,385 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "main": {
+      "type": "product-information",
+      "blocks": {
+        "media-gallery": {
+          "type": "_product-media-gallery",
+          "static": true,
+          "settings": {
+            "media_presentation": "carousel",
+            "media_columns": "one",
+            "image_gap": 0,
+            "large_first_image": false,
+            "icons_style": "arrow",
+            "slideshow_controls_style": "thumbnails",
+            "slideshow_mobile_controls_style": "thumbnails",
+            "thumbnail_position": "left",
+            "thumbnail_width": 72,
+            "aspect_ratio": "1/1.25",
+            "constrain_to_viewport": true,
+            "media_fit": "cover",
+            "media_radius": 0,
+            "extend_media": true,
+            "zoom": true,
+            "video_loop": false,
+            "hide_variants": false,
+            "padding-block-start": 0,
+            "padding-block-end": 0,
+            "padding-inline-start": 0,
+            "padding-inline-end": 0,
+            "thumbnail_radius": 0
+          },
+          "blocks": {}
+        },
+        "product-details": {
+          "type": "_product-details",
+          "static": true,
+          "settings": {
+            "width": "fill",
+            "custom_width": 100,
+            "width_mobile": "fill",
+            "custom_width_mobile": 100,
+            "height": "fit",
+            "details_position": "flex-start",
+            "gap": 20,
+            "sticky_details_desktop": true,
+            "background_media": "none",
+            "video_position": "cover",
+            "background_image_position": "cover",
+            "border": "none",
+            "border_width": 1,
+            "border_opacity": 100,
+            "border_radius": 0,
+            "padding-block-start": 24,
+            "padding-block-end": 32,
+            "padding-inline-start": 0,
+            "padding-inline-end": 0
+          },
+          "blocks": {
+            "group_icgrde": {
+              "type": "group",
+              "name": "t:names.header",
+              "settings": {
+                "content_direction": "column",
+                "vertical_on_mobile": true,
+                "horizontal_alignment": "flex-start",
+                "vertical_alignment": "center",
+                "align_baseline": false,
+                "horizontal_alignment_flex_direction_column": "flex-start",
+                "vertical_alignment_flex_direction_column": "center",
+                "gap": 8,
+                "width": "fill",
+                "custom_width": 100,
+                "width_mobile": "fill",
+                "custom_width_mobile": 100,
+                "height": "fit",
+                "custom_height": 100,
+                "background_media": "none",
+                "video_position": "cover",
+                "background_image_position": "cover",
+                "toggle_overlay": false,
+                "overlay_color": "#00000026",
+                "overlay_style": "solid",
+                "gradient_direction": "to top",
+                "border": "none",
+                "border_width": 1,
+                "border_opacity": 100,
+                "border_radius": 0,
+                "open_in_new_tab": false,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {
+                "category_label": {
+                  "type": "asturan-category-label",
+                  "settings": {},
+                  "blocks": {}
+                },
+                "text_xpVMaM": {
+                  "type": "text",
+                  "name": "t:names.title",
+                  "settings": {
+                    "text": "<h1>{{ closest.product.title }}</h1>",
+                    "width": "fit-content",
+                    "max_width": "normal",
+                    "alignment": "left",
+                    "type_preset": "custom",
+                    "font": "var(--font-heading--family)",
+                    "font_size": "2rem",
+                    "line_height": "tight",
+                    "letter_spacing": "normal",
+                    "case": "none",
+                    "wrap": "balance",
+                    "background": false,
+                    "background_color": "#00000026",
+                    "corner_radius": 0,
+                    "padding-block-start": 0,
+                    "padding-block-end": 0,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0
+                  },
+                  "blocks": {}
+                },
+                "price_tVjtKg": {
+                  "type": "price",
+                  "settings": {
+                    "show_sale_price_first": true,
+                    "show_installments": true,
+                    "show_tax_info": true,
+                    "type_preset": "paragraph",
+                    "width": "100%",
+                    "alignment": "left",
+                    "font": "var(--font-body--family)",
+                    "font_size": "1.125rem",
+                    "line_height": "normal",
+                    "letter_spacing": "normal",
+                    "case": "none",
+                    "padding-block-start": 4,
+                    "padding-block-end": 0,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": [
+                "category_label",
+                "text_xpVMaM",
+                "price_tVjtKg"
+              ]
+            },
+            "divider_VJhene": {
+              "type": "_divider",
+              "name": "t:names.divider",
+              "settings": {
+                "thickness": 1,
+                "corner_radius": "square",
+                "divider_color": "{{ settings.color_palette.color3 }}",
+                "width_percent": 100,
+                "padding-block-start": 0,
+                "padding-block-end": 0
+              },
+              "blocks": {}
+            },
+            "variant_picker_R3rGDr": {
+              "type": "variant-picker",
+              "settings": {
+                "variant_style": "buttons",
+                "show_swatches": true,
+                "alignment": "left",
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {}
+            },
+            "buy_buttons_eYQEYi": {
+              "type": "buy-buttons",
+              "settings": {
+                "stacking": true,
+                "show_pickup_availability": false,
+                "gift_card_form": true,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {
+                "quantity": {
+                  "type": "quantity",
+                  "static": true,
+                  "settings": {},
+                  "blocks": {}
+                },
+                "add-to-cart": {
+                  "type": "add-to-cart",
+                  "static": true,
+                  "settings": {
+                    "style_class": "button"
+                  },
+                  "blocks": {}
+                },
+                "accelerated-checkout": {
+                  "type": "accelerated-checkout",
+                  "static": true,
+                  "settings": {},
+                  "blocks": {}
+                }
+              },
+              "block_order": []
+            },
+            "size_guide": {
+              "type": "asturan-size-guide",
+              "settings": {
+                "label": "Size guide"
+              },
+              "blocks": {}
+            },
+            "promise_line": {
+              "type": "asturan-promise-line",
+              "settings": {
+                "item_1": "Low shipping prices",
+                "item_2": "14 day returns",
+                "item_3": "Flexible payment"
+              },
+              "blocks": {}
+            },
+            "complete_look": {
+              "type": "asturan-complete-the-look",
+              "settings": {
+                "heading": "Complete the look",
+                "button_label": "Add",
+                "metafield_key": "custom.complete_the_look",
+                "collection": "chiffon-hijabs"
+              },
+              "blocks": {}
+            },
+            "details_accordion": {
+              "type": "accordion",
+              "settings": {
+                "icon": "plus",
+                "dividers": true,
+                "type_preset": "h6",
+                "border": "none",
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0
+              },
+              "blocks": {
+                "row_description": {
+                  "type": "_accordion-row",
+                  "settings": {
+                    "heading": "Description",
+                    "open_by_default": true,
+                    "icon": "none",
+                    "width": 20
+                  },
+                  "blocks": {
+                    "info_description": {
+                      "type": "asturan-product-info",
+                      "settings": {
+                        "source": "description"
+                      },
+                      "blocks": {}
+                    }
+                  },
+                  "block_order": [
+                    "info_description"
+                  ]
+                },
+                "row_size_fit": {
+                  "type": "_accordion-row",
+                  "settings": {
+                    "heading": "Size & fit",
+                    "open_by_default": false,
+                    "icon": "none",
+                    "width": 20
+                  },
+                  "blocks": {
+                    "info_size_fit": {
+                      "type": "asturan-product-info",
+                      "settings": {
+                        "source": "text",
+                        "metafield_key": "custom.size_fit",
+                        "text": "<p>Sizes 52–62 refer to the length of the abaya in inches, measured from shoulder to hem. See the size guide for help choosing.</p>"
+                      },
+                      "blocks": {}
+                    }
+                  },
+                  "block_order": [
+                    "info_size_fit"
+                  ]
+                },
+                "row_shipping": {
+                  "type": "_accordion-row",
+                  "settings": {
+                    "heading": "Shipping & returns",
+                    "open_by_default": false,
+                    "icon": "none",
+                    "width": 20
+                  },
+                  "blocks": {
+                    "info_shipping": {
+                      "type": "asturan-product-info",
+                      "settings": {
+                        "source": "text",
+                        "metafield_key": "custom.shipping_returns",
+                        "text": "<p>We ship across the US and Canada. Returns are accepted within 14 days of delivery.</p>"
+                      },
+                      "blocks": {}
+                    }
+                  },
+                  "block_order": [
+                    "info_shipping"
+                  ]
+                }
+              },
+              "block_order": [
+                "row_description",
+                "row_size_fit",
+                "row_shipping"
+              ]
+            }
+          },
+          "block_order": [
+            "group_icgrde",
+            "divider_VJhene",
+            "variant_picker_R3rGDr",
+            "size_guide",
+            "buy_buttons_eYQEYi",
+            "promise_line",
+            "complete_look",
+            "details_accordion"
+          ]
+        },
+        "disclosures": {
+          "type": "disclosures",
+          "settings": {
+            "padding-block-start": 0,
+            "padding-block-end": 0
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "disclosures"
+      ],
+      "settings": {
+        "content_width": "content-center-aligned",
+        "desktop_media_position": "left",
+        "equal_columns": false,
+        "limit_details_width": false,
+        "gap": 48,
+        "padding-block-start": 0,
+        "padding-block-end": 0,
+        "enable_sticky_add_to_cart": true
+      }
+    },
+    "related": {
+      "type": "asturan-related-products",
+      "settings": {
+        "heading": "You may also like",
+        "products_to_show": 4,
+        "arch_images": true
+      }
+    }
+  },
+  "order": [
+    "main",
+    "related"
+  ]
+}

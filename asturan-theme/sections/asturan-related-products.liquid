@@ -1,0 +1,58 @@
+{%- comment -%}
+  Asturan "You may also like": Shopify's related-product recommendations for the current product.
+  4 across on desktop, a horizontal scroll on mobile. Loaded after the page so it never slows it down.
+{%- endcomment -%}
+
+{%- liquid
+  assign limit = section.settings.products_to_show
+-%}
+
+<section class="asturan-section asturan-products asturan-related">
+  <div
+    class="asturan-container"
+    {% if recommendations.performed? == false and product %}
+      data-asturan-recommendations
+      data-url="{{ routes.product_recommendations_url }}?section_id={{ section.id }}&product_id={{ product.id }}&limit={{ limit }}&intent=related"
+    {% endif %}
+  >
+    {%- if recommendations.performed? and recommendations.products_count > 0 -%}
+      <div class="asturan-section-head">
+        <h2 class="asturan-section-head__title">{{ section.settings.heading | escape }}</h2>
+      </div>
+      <ul class="asturan-grid asturan-grid--scroll-mobile list-unstyled" role="list">
+        {%- for item in recommendations.products limit: limit -%}
+          <li class="asturan-grid__item">
+            {% render 'asturan-product-card', product: item, arch: section.settings.arch_images %}
+          </li>
+        {%- endfor -%}
+      </ul>
+    {%- endif -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Asturan related products",
+  "enabled_on": {
+    "templates": ["product"]
+  },
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "You may also like" },
+    {
+      "type": "range",
+      "id": "products_to_show",
+      "label": "Products to show",
+      "min": 2,
+      "max": 8,
+      "step": 1,
+      "default": 4
+    },
+    { "type": "checkbox", "id": "arch_images", "label": "Arched images", "default": true },
+    {
+      "type": "paragraph",
+      "content": "Recommendations improve over time. You can also choose related products with the Shopify Search & Discovery app."
+    }
+  ],
+  "presets": [{ "name": "Asturan related products" }]
+}
+{% endschema %}

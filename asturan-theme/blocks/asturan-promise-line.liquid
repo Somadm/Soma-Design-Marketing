@@ -1,0 +1,30 @@
+{%- doc -%}
+  One line of store promises under the buy buttons (shipping, returns, payment).
+{%- enddoc -%}
+
+<ul class="asturan-promise-line list-unstyled" role="list" {{ block.shopify_attributes }}>
+  {%- for i in (1..3) -%}
+    {%- assign key = 'item_' | append: i -%}
+    {%- if block.settings[key] != blank -%}
+      <li>{{ block.settings[key] | escape }}</li>
+    {%- endif -%}
+  {%- endfor -%}
+</ul>
+
+{% schema %}
+{
+  "name": "Asturan promise line",
+  "tag": null,
+  "settings": [
+    { "type": "text", "id": "item_1", "label": "First promise", "default": "Low shipping prices" },
+    { "type": "text", "id": "item_2", "label": "Second promise", "default": "14 day returns" },
+    { "type": "text", "id": "item_3", "label": "Third promise", "default": "Flexible payment" }
+  ],
+  "presets": [
+    {
+      "name": "Asturan promise line",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

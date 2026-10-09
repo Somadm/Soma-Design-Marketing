@@ -1,0 +1,185 @@
+/**
+ * Asturan theme extras: related-product loading, the size guide dialog and the
+ * "Complete the look" one-click add. Each part works without the others.
+ */
+
+/* Related products: fetch the recommendations section once it nears the viewport. */
+function loadRecommendations(container) {
+  const url = container.dataset.url;
+  if (!url) return;
+
+  fetch(url)
+    .then((response) => response.text())
+    .then((text) => {
+      const html = new DOMParser().parseFromString(text, 'text/html');
+      const fresh = html.querySelector('.asturan-related .asturan-container');
+      if (fresh && fresh.innerHTML.trim()) {
+        container.innerHTML = fresh.innerHTML;
+        container.removeAttribute('data-url');
+      }
+    })
+    .catch(() => {});
+}
+
+function initRecommendations() {
+  const containers = document.querySelectorAll('[data-asturan-recommendations][data-url]');
+  if (!containers.length) return;
+
+  if (!('IntersectionObserver' in window)) {
+    containers.forEach(loadRecommendations);
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+        loadRecommendations(/** @type {HTMLElement} */ (entry.target));
+      });
+    },
+    { rootMargin: '0px 0px 400px 0px' },
+  );
+  containers.forEach((container) => observer.observe(container));
+}
+
+/* Size guide and other dialogs opened with [data-asturan-dialog-open]. */
+document.addEventListener('click', (event) => {
+  const target = /** @type {HTMLElement} */ (event.target);
+  const opener = target.closest('[data-asturan-dialog-open]');
+  if (opener) {
+    const dialog = document.getElementById(opener.getAttribute('data-asturan-dialog-open') || '');
+    if (dialog instanceof HTMLDialogElement && typeof dialog.showModal === 'function') {
+      event.preventDefault();
+      dialog.showModal();
+    }
+    return;
+  }
+
+  if (target.closest('[data-asturan-dialog-close]')) {
+    target.closest('dialog')?.close();
+    return;
+  }
+
+  // Close when the backdrop (the dialog element itself) is clicked.
+  if (target instanceof HTMLDialogElement && target.classList.contains('asturan-dialog')) {
+    target.close();
+  }
+});
+
+/* Complete the look: keep the price in step with the chosen variant. */
+document.addEventListener('change', (event) => {
+  const select = /** @type {HTMLElement} */ (event.target);
+  if (!(select instanceof HTMLSelectElement) || !select.classList.contains('asturan-ctl__select')) return;
+  const price = select.selectedOptions[0]?.dataset.price;
+  const priceEl = select.closest('.asturan-ctl__info')?.querySelector('[data-asturan-ctl-price]');
+  if (price && priceEl) priceEl.textContent = price;
+});
+
+/**
+ * Complete the look: add to cart without leaving the page. Uses the same cart event as Horizon's
+ * product form so the cart drawer and cart count update. Without JavaScript the form posts normally.
+ */
+document.addEventListener('submit', async (event) => {
+  const form = /** @type {HTMLFormElement} */ (event.target);
+  if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-asturan-quick-add')) return;
+  event.preventDefault();
+
+  const button = form.querySelector('button[type="submit"]');
+  const status = form.parentElement?.querySelector('.asturan-ctl__status');
+  if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+
+  const originalLabel = button.textContent;
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  if (status) status.textContent = '';
+
+  const formData = new FormData(form);
+  const sectionIds = Array.from(document.querySelectorAll('cart-items-component'))
+    .map((element) => /** @type {HTMLElement} */ (element).dataset.sectionId)
+    .filter(Boolean);
+  if (sectionIds.length) formData.append('sections', sectionIds.join(','));
+
+  /** @type {any} */
+  let CartEvent = null;
+  /** @type {any} */
+  let deferred = null;
+  try {
+    ({ CartLinesUpdateEvent: CartEvent } = await import('@shopify/events'));
+    deferred = CartEvent.createPromise();
+    form.dispatchEvent(
+      new CartEvent({
+        action: 'add',
+        context: 'product',
+        lines: [{ merchandiseId: String(formData.get('id')), quantity: 1 }],
+        promise: deferred.promise,
+      }),
+    );
+  } catch (error) {
+    CartEvent = null;
+  }
+
+  const routes = /** @type {any} */ (window).Theme?.routes || {};
+  const addUrl = routes.cart_add_url || '/cart/add.js';
+  const cartUrl = `${routes.cart_url || '/cart'}.js`;
+
+  let reachedServer = false;
+  try {
+    const response = await fetch(addUrl, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      body: formData,
+    });
+    reachedServer = true;
+    const result = await response.json();
+    const cart = await fetch(cartUrl, { headers: { Accept: 'application/json' } }).then((r) => r.json());
+
+    if (!response.ok || result.status) {
+      deferred?.resolve({
+        cart: CartEvent.createCartFromAjaxResponse(cart),
+        detail: {
+          didError: true,
+          items: cart.items,
+          source: 'asturan-complete-the-look',
+          sourceId: form.id,
+          itemCount: 1,
+        },
+      });
+      if (status) status.textContent = result.description || result.message || '';
+      button.textContent = originalLabel;
+    } else {
+      deferred?.resolve({
+        cart: CartEvent.createCartFromAjaxResponse(cart),
+        detail: {
+          didError: false,
+          items: cart.items,
+          sections: result.sections,
+          source: 'asturan-complete-the-look',
+          sourceId: form.id,
+          itemCount: 1,
+          productId: String(result.product_id || ''),
+        },
+      });
+      button.textContent = button.dataset.labelAdded || originalLabel;
+      if (status) status.textContent = button.dataset.labelAdded || '';
+      window.setTimeout(() => {
+        button.textContent = originalLabel;
+        if (status) status.textContent = '';
+      }, 2500);
+    }
+  } catch (error) {
+    deferred?.reject?.(error);
+    // Only fall back to a normal form post when the item was not added, so it is never added twice.
+    if (!reachedServer) form.submit();
+  } finally {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+  }
+});
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initRecommendations);
+} else {
+  initRecommendations();
+}
+document.addEventListener('shopify:section:load', initRecommendations);

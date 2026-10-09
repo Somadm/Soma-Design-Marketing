@@ -1,0 +1,119 @@
+{%- comment -%}
+  Asturan shop-by-category grid: arched image tiles with a small burgundy group label above the collection name.
+  A tile set to "Solid burgundy" (used for Sale) shows a burgundy arch instead of a photo.
+{%- endcomment -%}
+
+<section class="asturan-section asturan-tiles">
+  <div class="asturan-container">
+    {%- if section.settings.heading != blank -%}
+      <div class="asturan-section-head asturan-section-head--center">
+        <h2 class="asturan-section-head__title">{{ section.settings.heading | escape }}</h2>
+      </div>
+    {%- endif -%}
+
+    <ul
+      class="asturan-tiles__grid list-unstyled"
+      role="list"
+      style="--asturan-tiles-columns: {{ section.settings.columns_desktop }};"
+    >
+      {%- for block in section.blocks -%}
+        {%- liquid
+          assign collection = block.settings.collection
+          assign tile_url = block.settings.url | default: collection.url | default: routes.all_products_collection_url
+          assign tile_image = block.settings.image | default: collection.featured_image
+          assign tile_title = block.settings.title | default: collection.title
+          assign is_solid = false
+          if block.settings.style == 'solid'
+            assign is_solid = true
+          endif
+        -%}
+        <li class="asturan-tile{% if is_solid %} asturan-tile--solid{% endif %}" {{ block.shopify_attributes }}>
+          <a class="asturan-tile__link" href="{{ tile_url }}">
+            <div class="asturan-arch asturan-tile__media">
+              {%- if is_solid -%}
+                <span class="asturan-tile__solid-text">{{ block.settings.solid_text | default: tile_title | escape }}</span>
+              {%- elsif tile_image != blank -%}
+                {{
+                  tile_image
+                  | image_url: width: 900
+                  | image_tag:
+                    widths: '300, 450, 600, 900',
+                    sizes: '(min-width: 990px) 25vw, 50vw',
+                    loading: 'lazy',
+                    alt: tile_title
+                }}
+              {%- else -%}
+                {{ 'collection-apparel-1' | placeholder_svg_tag: 'asturan-placeholder' }}
+              {%- endif -%}
+            </div>
+            <div class="asturan-tile__text">
+              {%- if block.settings.group_label != blank -%}
+                <span class="asturan-label">{{ block.settings.group_label | escape }}</span>
+              {%- endif -%}
+              <span class="asturan-tile__title">{{ tile_title | escape }}</span>
+            </div>
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Asturan category tiles",
+  "class": "asturan-section-wrapper",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Shop by category" },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "Tiles per row on desktop",
+      "min": 3,
+      "max": 4,
+      "step": 1,
+      "default": 4,
+      "info": "Always 2 per row on mobile."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "tile",
+      "name": "Category tile",
+      "settings": [
+        { "type": "text", "id": "group_label", "label": "Group label", "default": "Abayas" },
+        { "type": "text", "id": "title", "label": "Collection name", "info": "Leave empty to use the collection's title." },
+        { "type": "collection", "id": "collection", "label": "Collection" },
+        { "type": "url", "id": "url", "label": "Link (overrides collection)" },
+        { "type": "image_picker", "id": "image", "label": "Image", "info": "Leave empty to use the collection image. Tall portrait photos suit the arch." },
+        {
+          "type": "select",
+          "id": "style",
+          "label": "Tile style",
+          "options": [
+            { "value": "image", "label": "Photo" },
+            { "value": "solid", "label": "Solid burgundy" }
+          ],
+          "default": "image"
+        },
+        { "type": "text", "id": "solid_text", "label": "Text inside a solid tile", "default": "Sale" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Asturan category tiles",
+      "blocks": [
+        { "type": "tile", "settings": { "group_label": "Abayas", "title": "Open Abayas" } },
+        { "type": "tile", "settings": { "group_label": "Abayas", "title": "Closed Abayas" } },
+        { "type": "tile", "settings": { "group_label": "Abayas", "title": "Crepe Abayas" } },
+        { "type": "tile", "settings": { "group_label": "Hijabs", "title": "Chiffon Hijabs" } },
+        { "type": "tile", "settings": { "group_label": "Hijabs", "title": "Print Hijabs" } },
+        { "type": "tile", "settings": { "group_label": "Prayer", "title": "Prayer Sets" } },
+        { "type": "tile", "settings": { "group_label": "Just in", "title": "New & Trending" } },
+        { "type": "tile", "settings": { "group_label": "Offers", "title": "Sale", "style": "solid", "solid_text": "Sale" } }
+      ]
+    }
+  ]
+}
+{% endschema %}
