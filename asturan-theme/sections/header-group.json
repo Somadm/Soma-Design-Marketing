@@ -22,7 +22,7 @@
             "font_size": "0.75rem",
             "weight": "500",
             "letter_spacing": "loose",
-            "case": "none",
+            "case": "uppercase",
             "text_color": "#FFFFFF"
           },
           "blocks": {}
@@ -81,7 +81,7 @@
         "menu_position": "left",
         "menu_row": "top",
         "show_search": true,
-        "search_position": "left",
+        "search_position": "right",
         "search_row": "top",
         "show_country": true,
         "country_selector_style": false,
@@ -92,14 +92,17 @@
         "localization_row": "top",
         "section_width": "page-width",
         "section_height": "standard",
-        "enable_sticky_header": "always",
+        "enable_sticky_header": "scroll-up",
         "divider_width": 0,
         "divider_size": "page-width",
         "border_width": 0,
         "enable_transparent_header_home": false,
         "enable_transparent_header_product": false,
         "enable_transparent_header_collection": false,
-        "actions_font": "body"
+        "actions_font": "body",
+        "actions_display_style": "text",
+        "actions_font_size": "0.75rem",
+        "actions_text_case": "uppercase"
       }
     },
     "asturan_category_bar": {

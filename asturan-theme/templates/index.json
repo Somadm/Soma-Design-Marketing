@@ -21,8 +21,11 @@
         "height": "large",
         "content_position": "left",
         "text_theme": "dark",
-        "overlay_opacity": 30,
-        "mobile_text_below": true
+        "overlay_opacity": 0,
+        "mobile_text_below": true,
+        "layout": "full",
+        "style": "card",
+        "text": "<p>A premium modest fashion experience for women across North America.</p>"
       }
     },
     "categories": {
@@ -91,9 +94,9 @@
         "tile_7": {
           "type": "tile",
           "settings": {
-            "group_label": "Just in",
+            "group_label": "Shop all",
             "title": "New & Trending",
-            "collection": "new-trending",
+            "collection": "all",
             "style": "image",
             "solid_text": "Sale"
           }
@@ -121,18 +124,23 @@
       ],
       "settings": {
         "heading": "Shop by category",
-        "columns_desktop": "4"
+        "columns_desktop": "4",
+        "eyebrow": "Collections",
+        "shape": "rect",
+        "text_alignment": "left"
       }
     },
     "trending": {
       "type": "asturan-trending",
       "settings": {
         "heading": "Trending Products",
-        "collection": "new-trending",
+        "collection": "frontpage",
         "products_to_show": 4,
         "view_all_label": "View all",
-        "arch_images": true,
-        "scroll_on_mobile": false
+        "arch_images": false,
+        "scroll_on_mobile": false,
+        "eyebrow": "New in",
+        "background": "white"
       }
     },
     "shop_the_look": {
@@ -143,7 +151,9 @@
           "settings": {
             "eyebrow": "Shop the look",
             "button_label": "Shop now",
-            "image_position": "left"
+            "image_position": "left",
+            "product": "blue-purple-metallic-satin-open-abaya",
+            "sizes_word": "Sizes"
           }
         }
       },
@@ -158,25 +168,29 @@
         "promise_1": {
           "type": "promise",
           "settings": {
-            "title": "Low Shipping Prices"
+            "title": "Low Shipping Prices",
+            "text": "<p>You will love our great low prices</p>"
           }
         },
         "promise_2": {
           "type": "promise",
           "settings": {
-            "title": "Flexible Payment"
+            "title": "Flexible Payment",
+            "text": "<p>Pay with Multiple Credit Cards</p>"
           }
         },
         "promise_3": {
           "type": "promise",
           "settings": {
-            "title": "14 Day Returns"
+            "title": "14 Day Returns",
+            "text": "<p>Returns accepted within 14 days.</p>"
           }
         },
         "promise_4": {
           "type": "promise",
           "settings": {
-            "title": "Premium Support"
+            "title": "Premium Support",
+            "text": "<p>We would love to help with any purchasing issues.</p>"
           }
         }
       },
@@ -187,13 +201,38 @@
         "promise_4"
       ],
       "settings": {}
+    },
+    "brand_intro": {
+      "type": "asturan-brand-intro",
+      "settings": {
+        "eyebrow": "Who we are",
+        "heading": "A refined modest wear brand for everyday elegance.",
+        "text": "<p>Asturan Modest Wear offers abayas, hijabs and prayer sets with a focus on polished modest style, comfort, and accessible luxury.</p>",
+        "tagline": "Home of modest fashion in North America.",
+        "button_label": "Shop all",
+        "button_url": "shopify://collections/all"
+      }
+    },
+    "everyday": {
+      "type": "asturan-feature-panel",
+      "settings": {
+        "collection": "hijabs",
+        "panel_color": "black",
+        "panel_position": "right",
+        "eyebrow": "Everyday pieces",
+        "heading": "Soft neutrals. Strong basics.",
+        "text": "<p>Hijabs and simple abayas for the daily wardrobe: clean, soft and easy to wear.</p>",
+        "button_label": "Shop hijabs"
+      }
     }
   },
   "order": [
     "hero",
     "categories",
+    "brand_intro",
     "trending",
     "shop_the_look",
+    "everyday",
     "promises"
   ]
 }

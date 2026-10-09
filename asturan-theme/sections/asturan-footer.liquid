@@ -1,117 +1,131 @@
 {%- comment -%}
-  Asturan footer (burgundy): email sign-up, Shop and Help menus, contact email, Instagram and TikTok.
+  Asturan footer (burgundy): email sign-up, Shop and Help menus, and an Asturan column with location,
+  contact email, Instagram and TikTok. Stacks on mobile with links in two columns.
 {%- endcomment -%}
 
 {%- liquid
   assign contact_email = section.settings.contact_email | default: shop.email
-  assign social_handle = section.settings.social_handle
 -%}
 
 <div class="asturan-footer">
-  <div class="asturan-container">
-    <div class="asturan-footer__top">
-      <div class="asturan-footer__signup">
-        <h2 class="asturan-footer__heading">{{ section.settings.signup_heading | escape }}</h2>
-        {%- if section.settings.signup_text != blank -%}
-          <div class="asturan-footer__text">{{ section.settings.signup_text }}</div>
+  {%- if section.settings.show_logo or section.settings.statement != blank -%}
+    <div class="asturan-container asturan-footer__brand">
+      {%- if section.settings.show_logo -%}
+        <a href="{{ routes.root_url }}" class="asturan-footer__logo">
+          <img
+            src="{{ 'asturan-logo-white.png' | asset_url }}"
+            alt="{{ shop.name | escape }}"
+            width="1000"
+            height="846"
+            loading="lazy"
+          >
+        </a>
+      {%- endif -%}
+      {%- if section.settings.statement != blank -%}
+        <p class="asturan-footer__statement">{{ section.settings.statement | escape }}</p>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+  <div class="asturan-container asturan-footer__grid">
+    <div class="asturan-footer__signup">
+      <h2 class="asturan-footer__heading">{{ section.settings.signup_heading | escape }}</h2>
+      {%- if section.settings.signup_text != blank -%}
+        <div class="asturan-footer__text">{{ section.settings.signup_text }}</div>
+      {%- endif -%}
+
+      {%- form 'customer', id: 'AsturanFooterSignup', class: 'asturan-signup' -%}
+        <input type="hidden" name="contact[tags]" value="newsletter">
+        {%- if form.posted_successfully? -%}
+          <p class="asturan-signup__message" role="status">{{ section.settings.signup_success | escape }}</p>
+        {%- else -%}
+          <div class="asturan-signup__row">
+            <label class="visually-hidden" for="AsturanFooterSignupEmail">
+              {{- section.settings.signup_placeholder | escape -}}
+            </label>
+            <input
+              id="AsturanFooterSignupEmail"
+              class="asturan-signup__input"
+              type="email"
+              name="contact[email]"
+              autocomplete="email"
+              autocorrect="off"
+              autocapitalize="off"
+              placeholder="{{ section.settings.signup_placeholder | escape }}"
+              required
+              {% if form.errors %}
+                aria-invalid="true" aria-describedby="AsturanFooterSignupError"
+              {% endif %}
+            >
+            <button class="asturan-signup__button" type="submit">
+              {{- section.settings.signup_button | escape -}}
+            </button>
+          </div>
+          {%- if form.errors -%}
+            <p id="AsturanFooterSignupError" class="asturan-signup__message" role="alert">
+              {{ form.errors.translated_fields.email | capitalize }}
+              {{ form.errors.messages.email }}
+            </p>
+          {%- endif -%}
         {%- endif -%}
-
-        {%- form 'customer', id: 'AsturanFooterSignup', class: 'asturan-signup' -%}
-          <input type="hidden" name="contact[tags]" value="newsletter">
-          {%- if form.posted_successfully? -%}
-            <p class="asturan-signup__message" role="status">{{ section.settings.signup_success | escape }}</p>
-          {%- else -%}
-            <div class="asturan-signup__row">
-              <label class="visually-hidden" for="AsturanFooterSignupEmail">{{ section.settings.signup_placeholder | escape }}</label>
-              <input
-                id="AsturanFooterSignupEmail"
-                class="asturan-signup__input"
-                type="email"
-                name="contact[email]"
-                autocomplete="email"
-                autocorrect="off"
-                autocapitalize="off"
-                placeholder="{{ section.settings.signup_placeholder | escape }}"
-                required
-                {% if form.errors %}
-                  aria-invalid="true" aria-describedby="AsturanFooterSignupError"
-                {% endif %}
-              >
-              <button class="asturan-btn asturan-btn--white" type="submit">
-                {{- section.settings.signup_button | escape -}}
-              </button>
-            </div>
-            {%- if form.errors -%}
-              <p id="AsturanFooterSignupError" class="asturan-signup__message" role="alert">
-                {{ form.errors.translated_fields.email | capitalize }}
-                {{ form.errors.messages.email }}
-              </p>
-            {%- endif -%}
-          {%- endif -%}
-        {%- endform -%}
-      </div>
-
-      <nav class="asturan-footer__menus" aria-label="{{ section.settings.shop_heading | escape }}">
-        {%- assign menus = 'shop,help' | split: ',' -%}
-        {%- for key in menus -%}
-          {%- liquid
-            assign menu_setting = key | append: '_menu'
-            assign heading_setting = key | append: '_heading'
-            assign menu = section.settings[menu_setting]
-          -%}
-          {%- if menu != blank and menu.links.size > 0 -%}
-            <div class="asturan-footer__menu">
-              <h3 class="asturan-footer__menu-title">{{ section.settings[heading_setting] | escape }}</h3>
-              <ul class="list-unstyled" role="list">
-                {%- for link in menu.links -%}
-                  <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
-                {%- endfor -%}
-              </ul>
-            </div>
-          {%- endif -%}
-        {%- endfor -%}
-
-        <div class="asturan-footer__menu">
-          <h3 class="asturan-footer__menu-title">{{ section.settings.contact_heading | escape }}</h3>
-          <ul class="list-unstyled" role="list">
-            {%- if contact_email != blank -%}
-              <li><a href="mailto:{{ contact_email }}">{{ contact_email }}</a></li>
-            {%- endif -%}
-          </ul>
-          <ul class="asturan-social list-unstyled" role="list">
-            {%- if section.settings.instagram_url != blank -%}
-              <li>
-                <a href="{{ section.settings.instagram_url }}" target="_blank" rel="noopener" aria-label="Instagram {{ social_handle | escape }}">
-                  <svg aria-hidden="true" focusable="false" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="1" fill="currentColor" stroke="none"/></svg>
-                </a>
-              </li>
-            {%- endif -%}
-            {%- if section.settings.tiktok_url != blank -%}
-              <li>
-                <a href="{{ section.settings.tiktok_url }}" target="_blank" rel="noopener" aria-label="TikTok {{ social_handle | escape }}">
-                  <svg aria-hidden="true" focusable="false" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.3 2.3 1.6 3.8 3.9 4v2.7c-1.4.1-2.6-.3-3.9-1.1v5.9c0 6.8-7.4 9-10.4 4.1-1.9-3.1-.7-8.6 5.5-8.8v2.9c-.5.1-1 .2-1.4.3-1.4.5-2.2 1.4-2 3 .4 3 6 3.9 5.5-2V3h2.8z"/></svg>
-                </a>
-              </li>
-            {%- endif -%}
-            {%- if social_handle != blank -%}
-              <li class="asturan-social__handle">{{ social_handle | escape }}</li>
-            {%- endif -%}
-          </ul>
-        </div>
-      </nav>
+      {%- endform -%}
     </div>
 
+    {%- assign menus = 'shop,help' | split: ',' -%}
+    {%- for key in menus -%}
+      {%- liquid
+        assign menu_setting = key | append: '_menu'
+        assign heading_setting = key | append: '_heading'
+        assign menu = section.settings[menu_setting]
+      -%}
+      {%- if menu != blank and menu.links.size > 0 -%}
+        <nav class="asturan-footer__menu" aria-label="{{ section.settings[heading_setting] | escape }}">
+          <h3 class="asturan-footer__menu-title">{{ section.settings[heading_setting] | escape }}</h3>
+          <ul class="list-unstyled" role="list">
+            {%- for link in menu.links -%}
+              <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+            {%- endfor -%}
+          </ul>
+        </nav>
+      {%- endif -%}
+    {%- endfor -%}
+
+    <div class="asturan-footer__menu">
+      <h3 class="asturan-footer__menu-title">{{ section.settings.contact_heading | escape }}</h3>
+      <ul class="list-unstyled" role="list">
+        {%- if section.settings.location != blank -%}
+          <li class="asturan-footer__plain">{{ section.settings.location | escape }}</li>
+        {%- endif -%}
+        {%- if contact_email != blank -%}
+          <li><a href="mailto:{{ contact_email }}">{{ contact_email }}</a></li>
+        {%- endif -%}
+        {%- if section.settings.instagram_url != blank -%}
+          <li>
+            <a href="{{ section.settings.instagram_url }}" target="_blank" rel="noopener">
+              {{- section.settings.instagram_label | escape -}}
+            </a>
+          </li>
+        {%- endif -%}
+        {%- if section.settings.tiktok_url != blank -%}
+          <li>
+            <a href="{{ section.settings.tiktok_url }}" target="_blank" rel="noopener">
+              {{- section.settings.tiktok_label | escape -}}
+            </a>
+          </li>
+        {%- endif -%}
+      </ul>
+    </div>
+  </div>
+
+  <div class="asturan-container">
     <div class="asturan-footer__bottom">
       <p class="asturan-footer__copyright">
-        &copy; {{ 'now' | date: '%Y' }} {{ shop.name | link_to: routes.root_url }}
+        {%- if section.settings.copyright != blank -%}
+          {%- assign current_year = 'now' | date: '%Y' -%}
+          {{ section.settings.copyright | replace: '[year]', current_year | escape }}
+        {%- else -%}
+          &copy; {{ 'now' | date: '%Y' }} {{ shop.name | escape }}
+        {%- endif -%}
       </p>
-      {%- if shop.policies.size > 0 -%}
-        <ul class="asturan-footer__policies list-unstyled" role="list">
-          {%- for policy in shop.policies -%}
-            <li><a href="{{ policy.url }}">{{ policy.title | escape }}</a></li>
-          {%- endfor -%}
-        </ul>
-      {%- endif -%}
       {%- if section.settings.show_payment_icons and shop.enabled_payment_types.size > 0 -%}
         <ul class="asturan-footer__payments list-unstyled" role="list">
           {%- for type in shop.enabled_payment_types -%}
@@ -131,9 +145,22 @@
     "groups": ["footer"]
   },
   "settings": [
+    { "type": "header", "content": "Brand" },
+    { "type": "checkbox", "id": "show_logo", "label": "Show the white Asturan logo", "default": true },
+    {
+      "type": "text",
+      "id": "statement",
+      "label": "Brand statement",
+      "default": "Elegant pieces. Clear shopping. A premium modest wear experience built for modern women."
+    },
     { "type": "header", "content": "Email sign-up" },
     { "type": "text", "id": "signup_heading", "label": "Heading", "default": "Join our email list" },
-    { "type": "richtext", "id": "signup_text", "label": "Text" },
+    {
+      "type": "richtext",
+      "id": "signup_text",
+      "label": "Text",
+      "default": "<p>Get exclusive deals and early access to new products.</p>"
+    },
     { "type": "text", "id": "signup_placeholder", "label": "Email field placeholder", "default": "Email address" },
     { "type": "text", "id": "signup_button", "label": "Button label", "default": "Sign up" },
     { "type": "text", "id": "signup_success", "label": "Success message", "default": "Thank you for joining." },
@@ -142,13 +169,23 @@
     { "type": "link_list", "id": "shop_menu", "label": "First menu" },
     { "type": "text", "id": "help_heading", "label": "Second menu heading", "default": "Help" },
     { "type": "link_list", "id": "help_menu", "label": "Second menu", "default": "footer" },
-    { "type": "header", "content": "Contact and social" },
-    { "type": "text", "id": "contact_heading", "label": "Contact heading", "default": "Contact" },
+    { "type": "header", "content": "Asturan column" },
+    { "type": "text", "id": "contact_heading", "label": "Heading", "default": "Asturan" },
+    { "type": "text", "id": "location", "label": "Location", "default": "United States Based" },
     { "type": "text", "id": "contact_email", "label": "Contact email", "info": "Leave empty to use the store's email." },
     { "type": "url", "id": "instagram_url", "label": "Instagram link" },
+    { "type": "text", "id": "instagram_label", "label": "Instagram label", "default": "Instagram @shop.asturan" },
     { "type": "url", "id": "tiktok_url", "label": "TikTok link" },
-    { "type": "text", "id": "social_handle", "label": "Social handle", "default": "@shop.asturan" },
-    { "type": "checkbox", "id": "show_payment_icons", "label": "Show payment icons", "default": true }
+    { "type": "text", "id": "tiktok_label", "label": "TikTok label", "default": "TikTok @shop.asturan" },
+    { "type": "header", "content": "Bottom line" },
+    {
+      "type": "text",
+      "id": "copyright",
+      "label": "Copyright text",
+      "info": "Write [year] to show the current year.",
+      "default": "© 2026 Asturan Modest. All Rights Reserved."
+    },
+    { "type": "checkbox", "id": "show_payment_icons", "label": "Show payment icons", "default": false }
   ],
   "presets": [{ "name": "Asturan footer" }]
 }

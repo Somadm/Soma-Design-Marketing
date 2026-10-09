@@ -1,0 +1,73 @@
+{%- doc -%}
+  Breadcrumb for the product page, for example "Home / Abayas / Open Abayas".
+  Built from the product's collections: a group collection (Abayas, Hijabs, Prayer Sets) and then the
+  most specific other collection. Hidden on mobile.
+{%- enddoc -%}
+
+{%- liquid
+  assign product = closest.product
+  if request.visual_preview_mode and product == blank
+    assign product = collections.all.products.first
+  endif
+
+  assign group_handles = block.settings.group_handles | remove: ' ' | split: ','
+  assign ignore_handles = block.settings.ignore_handles | remove: ' ' | split: ','
+  assign group_collection = nil
+  assign sub_collection = nil
+
+  for c in product.collections
+    if group_handles contains c.handle
+      if group_collection == nil
+        assign group_collection = c
+      endif
+    elsif ignore_handles contains c.handle
+      continue
+    elsif sub_collection == nil
+      assign sub_collection = c
+    endif
+  endfor
+-%}
+
+{%- if product != blank -%}
+  <nav class="asturan-breadcrumb" aria-label="Breadcrumb" {{ block.shopify_attributes }}>
+    <ol class="list-unstyled" role="list">
+      <li><a href="{{ routes.root_url }}">{{ block.settings.home_label | escape }}</a></li>
+      {%- if group_collection -%}
+        <li><a href="{{ group_collection.url }}">{{ group_collection.title | escape }}</a></li>
+      {%- endif -%}
+      {%- if sub_collection -%}
+        <li><a href="{{ sub_collection.url }}">{{ sub_collection.title | escape }}</a></li>
+      {%- endif -%}
+    </ol>
+  </nav>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Asturan breadcrumb",
+  "tag": null,
+  "settings": [
+    { "type": "text", "id": "home_label", "label": "Home label", "default": "Home" },
+    {
+      "type": "text",
+      "id": "group_handles",
+      "label": "Group collections",
+      "default": "abayas,hijabs,prayer-sets",
+      "info": "Collection handles shown as the first step, comma-separated."
+    },
+    {
+      "type": "text",
+      "id": "ignore_handles",
+      "label": "Collections to skip",
+      "default": "all,frontpage,new-trending,sale",
+      "info": "Collection handles never shown in the breadcrumb, comma-separated."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Asturan breadcrumb",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

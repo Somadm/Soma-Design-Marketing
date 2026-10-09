@@ -228,3 +228,18 @@ document.addEventListener('click', async (event) => {
     button.removeAttribute('aria-busy');
   }
 });
+
+/* Product page accordion: keep one section open at a time. */
+document.addEventListener(
+  'toggle',
+  (event) => {
+    const details = event.target;
+    if (!(details instanceof HTMLDetailsElement) || !details.open) return;
+    const accordion = details.closest('.product-details .accordion');
+    if (!accordion) return;
+    accordion.querySelectorAll('details[open]').forEach((other) => {
+      if (other !== details) other.open = false;
+    });
+  },
+  true,
+);

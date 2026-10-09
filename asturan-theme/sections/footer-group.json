@@ -15,6 +15,7 @@
       "type": "asturan-footer",
       "settings": {
         "signup_heading": "Join our email list",
+        "signup_text": "<p>Get exclusive deals and early access to new products.</p>",
         "signup_placeholder": "Email address",
         "signup_button": "Sign up",
         "signup_success": "Thank you for joining.",
@@ -22,11 +23,15 @@
         "shop_menu": "main-menu",
         "help_heading": "Help",
         "help_menu": "footer",
-        "contact_heading": "Contact",
+        "contact_heading": "Asturan",
+        "location": "United States Based",
+        "contact_email": "asturanmodest@gmail.com",
         "instagram_url": "https://www.instagram.com/shop.asturan",
+        "instagram_label": "Instagram @shop.asturan",
         "tiktok_url": "https://www.tiktok.com/@shop.asturan",
-        "social_handle": "@shop.asturan",
-        "show_payment_icons": true
+        "tiktok_label": "TikTok @shop.asturan",
+        "copyright": "© [year] Asturan Modest. All Rights Reserved.",
+        "show_payment_icons": false
       }
     }
   },

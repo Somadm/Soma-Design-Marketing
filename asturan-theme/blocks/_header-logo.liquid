@@ -55,14 +55,25 @@
     {% endif %}
     data-testid="header-logo"
   >
-    {% render 'image',
-      image: settings.logo,
-      class: 'header-logo__image',
-      height: settings.logo_height,
-      alt_text_fallback: alt_text_fallback,
-      text_fallback: shop.name,
-      style: logo_style
-    %}
+    {%- comment -%} Asturan: use the bundled brand logo until a logo is uploaded in Theme settings {%- endcomment -%}
+    {%- if settings.logo == blank and settings.asturan_bundled_logo -%}
+      <img
+        src="{{ 'asturan-logo.png' | asset_url }}"
+        alt="{{ shop.name | escape }}"
+        class="header-logo__image asturan-header-logo"
+        width="1000"
+        height="846"
+      >
+    {%- else -%}
+      {% render 'image',
+        image: settings.logo,
+        class: 'header-logo__image',
+        height: settings.logo_height,
+        alt_text_fallback: alt_text_fallback,
+        text_fallback: shop.name,
+        style: logo_style
+      %}
+    {%- endif -%}
   </span>
 
   {% if use_inverse_logo %}

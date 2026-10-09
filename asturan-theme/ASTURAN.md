@@ -16,6 +16,21 @@ Pick one. None of them publishes the theme:
 
 Publish only after approval: Themes → … → Publish.
 
+## Design
+
+The look follows the Asturan brand presentation: Asturan Burgundy (#7E252A) as the main colour, gold
+accents, warm white sections, solid burgundy and black panels, square photo frames, large serif headlines
+(Noto Serif) and small bold letter-spaced labels (Noto Sans). Cormorant Garamond + Jost is one switch away
+in Theme settings → Asturan brand.
+
+**Logo:** the final logo is built in (`assets/asturan-logo.png`, white version `asturan-logo-white.png`
+in the footer), centred at the top at 140px tall on desktop and 64px on mobile. Change the size under
+Theme settings → Asturan brand. Uploading a logo under Logo and favicon replaces the built-in one.
+
+**Categories on the landing page:** every category is visible on the homepage without opening a menu:
+in the category bar under the logo (a scrollable button row on mobile), and in the 8 category tiles
+directly below the hero.
+
 ## What's new
 
 | Where | File | What it does |
@@ -28,7 +43,9 @@ Publish only after approval: Themes → … → Publish.
 | Home | `sections/asturan-category-tiles.liquid` | 8 arched tiles with burgundy group labels; Sale tile solid burgundy |
 | Home | `sections/asturan-trending.liquid` | Trending Products with colour dots, name, price and View all |
 | Home | `sections/asturan-shop-the-look.liquid` | Burgundy block: large photo, name, price, colours, sizes, white Shop now button |
-| Home | `sections/asturan-promises.liquid` | 4 store promises with gold top lines |
+| Home | `sections/asturan-brand-intro.liquid` | "Who we are": burgundy headline, text, gold tagline and two overlapping photos |
+| Home | `sections/asturan-feature-panel.liquid` | Photos next to a burgundy or black panel (for example "Soft neutrals. Strong basics." for hijabs) |
+| Home | `sections/asturan-promises.liquid` | 4 store promises as warm cards with gold top lines |
 | Footer | `sections/asturan-footer.liquid` | Burgundy footer: email sign-up, Shop and Help menus, contact email, Instagram and TikTok (@shop.asturan) |
 | Product | `templates/product.json` | Gallery with thumbnails (swipeable on mobile), category label, name, price, round swatches with the selected colour name, sizes 52–62 (selected size burgundy), size guide, quantity, burgundy Add to cart, outlined Buy it now, promise line, Complete the look, Description / Size & fit / Shipping & returns, You may also like |
 | Product | `blocks/asturan-*.liquid` | Category label, size guide, promise line, product info, Complete the look (one-click Add) |

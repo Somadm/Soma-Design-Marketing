@@ -9,12 +9,17 @@
   assign limit = section.settings.products_to_show
 -%}
 
-<section class="asturan-section asturan-products">
+<section class="asturan-section asturan-products{% if section.settings.background == 'cream' %} asturan-bg-cream{% endif %}">
   <div class="asturan-container">
     <div class="asturan-section-head">
-      {%- if section.settings.heading != blank -%}
-        <h2 class="asturan-section-head__title">{{ section.settings.heading | escape }}</h2>
-      {%- endif -%}
+      <div>
+        {%- if section.settings.eyebrow != blank -%}
+          <p class="asturan-eyebrow">{{ section.settings.eyebrow | escape }}</p>
+        {%- endif -%}
+        {%- if section.settings.heading != blank -%}
+          <h2 class="asturan-section-head__title">{{ section.settings.heading | escape }}</h2>
+        {%- endif -%}
+      </div>
       {%- if section.settings.view_all_label != blank -%}
         <a class="asturan-link" href="{{ view_all_url }}">{{ section.settings.view_all_label | escape }}</a>
       {%- endif -%}
@@ -53,6 +58,7 @@
 {
   "name": "Asturan product row",
   "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Small heading", "default": "New in" },
     { "type": "text", "id": "heading", "label": "Heading", "default": "Trending Products" },
     { "type": "collection", "id": "collection", "label": "Collection" },
     {
@@ -66,7 +72,17 @@
     },
     { "type": "text", "id": "view_all_label", "label": "View all label", "default": "View all" },
     { "type": "url", "id": "view_all_url", "label": "View all link (overrides collection)" },
-    { "type": "checkbox", "id": "arch_images", "label": "Arched images", "default": true },
+    { "type": "checkbox", "id": "arch_images", "label": "Arched images", "default": false },
+    {
+      "type": "select",
+      "id": "background",
+      "label": "Background",
+      "options": [
+        { "value": "white", "label": "White" },
+        { "value": "cream", "label": "Warm white" }
+      ],
+      "default": "white"
+    },
     {
       "type": "checkbox",
       "id": "scroll_on_mobile",

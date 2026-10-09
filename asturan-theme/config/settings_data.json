@@ -9,8 +9,8 @@
  */
 {
   "current": {
-    "logo_height": 36,
-    "logo_height_mobile": 28,
+    "logo_height": 68,
+    "logo_height_mobile": 52,
     "type_body_font": "inter_n4",
     "type_subheading_font": "inter_n5",
     "type_heading_font": "inter_n5",
@@ -66,8 +66,8 @@
     "product_corner_radius": 0,
     "card_corner_radius": 0,
     "show_variant_image": false,
-    "variant_swatch_width": 32,
-    "variant_swatch_height": 32,
+    "variant_swatch_width": 56,
+    "variant_swatch_height": 56,
     "variant_swatch_radius": 100,
     "variant_button_border_width": 1,
     "variant_button_radius": 0,
@@ -75,7 +75,7 @@
     "content_for_index": [],
     "badge_sold_out_background_color": "{{ settings.color_palette.color2 }}",
     "palette_input_border": "{{ settings.color_palette.color3 }}",
-    "palette_variant_border": "{{ settings.color_palette.color3 }}",
+    "palette_variant_border": "#00000040",
     "color_palette": {
       "background": "#FFFFFF",
       "foreground": "#000000",
@@ -98,7 +98,12 @@
     "palette_selected_variant_background": "{{ settings.color_palette.color1 }}",
     "palette_selected_variant_text": "{{ settings.color_palette.background }}",
     "palette_selected_variant_border": "{{ settings.color_palette.color1 }}",
-    "badge_sale_background_color": "{{ settings.color_palette.color1 }}"
+    "badge_sale_background_color": "{{ settings.color_palette.color1 }}",
+    "variant_swatch_border_style": "none",
+    "asturan_logo_height": 140,
+    "asturan_logo_height_mobile": 64,
+    "asturan_bundled_logo": true,
+    "asturan_font_pairing": "presentation"
   },
   "presets": {
     "Default": {

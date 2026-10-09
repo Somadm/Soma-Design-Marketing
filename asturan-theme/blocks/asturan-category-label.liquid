@@ -1,6 +1,6 @@
 {%- doc -%}
   Small burgundy category label above the product name (for example "Abayas · Open").
-  Uses the text below if set; otherwise the product type, then the product's first collection.
+  Uses the text below if set; otherwise the product's most specific collection, then its product type.
 {%- enddoc -%}
 
 {%- liquid
@@ -10,7 +10,16 @@
   endif
   assign label = block.settings.text
   if label == blank
-    assign label = product.type | default: product.collections.first.title
+    assign skip_handles = block.settings.skip_handles | remove: ' ' | split: ','
+    for c in product.collections
+      unless skip_handles contains c.handle
+        assign label = c.title
+        break
+      endunless
+    endfor
+  endif
+  if label == blank
+    assign label = product.type
   endif
 -%}
 
@@ -27,7 +36,14 @@
       "type": "text",
       "id": "text",
       "label": "Label",
-      "info": "Leave empty to use the product type, or the product's first collection."
+      "info": "Leave empty to use the product's collection (for example Open Abayas)."
+    },
+    {
+      "type": "text",
+      "id": "skip_handles",
+      "label": "Collections to skip",
+      "default": "all,frontpage,new-trending,sale,abayas,hijabs",
+      "info": "Broad collection handles that are never used as the label, comma-separated."
     }
   ],
   "presets": [

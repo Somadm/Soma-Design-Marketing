@@ -30,9 +30,56 @@
       {
         "type": "checkbox",
         "id": "asturan_use_brand_fonts",
-        "label": "Use brand fonts (Cormorant Garamond and Jost)",
-        "info": "Loads the brand fonts from Google Fonts. Untick to use the fonts chosen under Typography instead.",
+        "label": "Use brand fonts",
+        "info": "Loads the brand font pairing below from Google Fonts. Untick to use the fonts chosen under Typography instead.",
         "default": true
+      },
+      {
+        "type": "select",
+        "id": "asturan_font_pairing",
+        "label": "Brand font pairing",
+        "options": [
+          {
+            "value": "presentation",
+            "label": "Noto Serif + Noto Sans (brand presentation)"
+          },
+          {
+            "value": "classic",
+            "label": "Cormorant Garamond + Jost"
+          }
+        ],
+        "default": "presentation"
+      },
+      {
+        "type": "header",
+        "content": "Logo"
+      },
+      {
+        "type": "checkbox",
+        "id": "asturan_bundled_logo",
+        "label": "Use the Asturan logo included with the theme",
+        "info": "Used when no logo is uploaded under Logo and favicon.",
+        "default": true
+      },
+      {
+        "type": "range",
+        "id": "asturan_logo_height",
+        "label": "Logo height on desktop",
+        "min": 60,
+        "max": 160,
+        "step": 5,
+        "unit": "px",
+        "default": 140
+      },
+      {
+        "type": "range",
+        "id": "asturan_logo_height_mobile",
+        "label": "Logo height on mobile",
+        "min": 40,
+        "max": 100,
+        "step": 4,
+        "unit": "px",
+        "default": 64
       },
       {
         "type": "header",

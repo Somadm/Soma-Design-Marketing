@@ -8,7 +8,7 @@
   assign colour_names = settings.asturan_color_option_names | default: 'Color,Colour' | downcase | split: ','
 -%}
 
-<section class="asturan-section asturan-looks">
+<section class="asturan-looks">
   {%- for block in section.blocks -%}
     {%- liquid
       assign product = block.settings.product
@@ -37,21 +37,46 @@
       {{ block.shopify_attributes }}
     >
       <div class="asturan-look__media">
-        <div class="asturan-arch asturan-look__frame">
-          {%- if look_image != blank -%}
+        {%- liquid
+          assign look_image_mobile = block.settings.image_mobile | default: look_image
+        -%}
+        {%- if look_image != blank -%}
+          <picture class="asturan-look__frame">
+            {%- if block.settings.image_mobile != blank -%}
+              <source
+                media="(max-width: 989px)"
+                srcset="{{ look_image_mobile | image_url: width: 750 }} 750w, {{ look_image_mobile | image_url: width: 1200 }} 1200w"
+                sizes="100vw"
+              >
+            {%- endif -%}
             {{
               look_image
               | image_url: width: 1600
               | image_tag:
-                widths: '450, 750, 1000, 1300, 1600',
-                sizes: '(min-width: 990px) 50vw, 100vw',
+                widths: '600, 900, 1200, 1600',
+                sizes: '(min-width: 990px) 58vw, 100vw',
                 loading: 'lazy',
                 alt: product.title
             }}
-          {%- else -%}
-            {{ 'product-apparel-2' | placeholder_svg_tag: 'asturan-placeholder' }}
-          {%- endif -%}
-        </div>
+          </picture>
+        {%- else -%}
+          <div class="asturan-look__frame">{{ 'product-apparel-2' | placeholder_svg_tag: 'asturan-placeholder' }}</div>
+        {%- endif -%}
+        {%- liquid
+          assign second_image = block.settings.image_2
+          if second_image == blank and block.settings.image == blank
+            assign second_image = product.media[1].preview_image
+          endif
+        -%}
+        {%- if second_image != blank -%}
+          <div class="asturan-look__frame asturan-look__frame--second">
+            {{
+              second_image
+              | image_url: width: 1000
+              | image_tag: widths: '400, 600, 800, 1000', sizes: '(min-width: 990px) 28vw, 50vw', loading: 'lazy', alt: ''
+            }}
+          </div>
+        {%- endif -%}
       </div>
 
       <div class="asturan-look__content">
@@ -60,35 +85,34 @@
         {%- endif -%}
         <h2 class="asturan-look__title">{{ product.title | default: 'Choose a product' | escape }}</h2>
         {%- if product != blank -%}
-          <p class="asturan-look__price">
-            {%- if product.compare_at_price > product.price -%}
-              {{ product.price | money }} <s>{{ product.compare_at_price | money }}</s>
-            {%- else -%}
-              {{ product.price | money }}
+          {%- liquid
+            assign meta = product.price | money
+            if colour_option
+              assign colour_list = ''
+              for value in colour_option.values
+                assign colour_list = colour_list | append: value
+                unless forloop.last
+                  assign colour_list = colour_list | append: ', '
+                endunless
+              endfor
+              assign meta = meta | append: ' · ' | append: colour_list
+            endif
+            if size_option
+              assign first_size = size_option.values.first
+              assign last_size = size_option.values.last
+              if size_option.values.size > 1
+                assign meta = meta | append: ' · ' | append: block.settings.sizes_word | append: ' ' | append: first_size | append: '–' | append: last_size
+              else
+                assign meta = meta | append: ' · ' | append: first_size
+              endif
+            endif
+          -%}
+          <p class="asturan-look__meta">
+            {{ meta | escape }}
+            {%- if product.compare_at_price > product.price %}
+              <s>{{ product.compare_at_price | money }}</s>
             {%- endif -%}
           </p>
-        {%- endif -%}
-
-        {%- if colour_option -%}
-          <div class="asturan-look__row">
-            <span class="asturan-look__label">{{ colour_option.name | escape }}</span>
-            <span class="asturan-look__values">
-              {%- for value in colour_option.values -%}
-                {{ value | escape }}
-                {%- unless forloop.last %} · {% endunless -%}
-              {%- endfor -%}
-            </span>
-          </div>
-        {%- endif -%}
-        {%- if size_option -%}
-          <div class="asturan-look__row">
-            <span class="asturan-look__label">{{ size_option.name | escape }}</span>
-            <ul class="asturan-look__sizes list-unstyled" role="list">
-              {%- for value in size_option.values -%}
-                <li>{{ value | escape }}</li>
-              {%- endfor -%}
-            </ul>
-          </div>
         {%- endif -%}
 
         {%- if block.settings.button_label != blank -%}
@@ -117,7 +141,10 @@
           "label": "Photo",
           "info": "Leave empty to use the product's main photo."
         },
+        { "type": "image_picker", "id": "image_2", "label": "Second photo (optional)", "info": "Leave both photos empty to show the product's first two photos." },
+        { "type": "image_picker", "id": "image_mobile", "label": "Mobile photo (optional)" },
         { "type": "text", "id": "eyebrow", "label": "Small heading", "default": "Shop the look" },
+        { "type": "text", "id": "sizes_word", "label": "Word before the size range", "default": "Sizes" },
         { "type": "text", "id": "button_label", "label": "Button label", "default": "Shop now" },
         { "type": "url", "id": "button_url", "label": "Button link", "info": "Leave empty to link to the product." },
         {

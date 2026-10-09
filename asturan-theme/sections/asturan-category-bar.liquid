@@ -3,7 +3,8 @@
   Desktop: group names in burgundy followed by their collections, ending with a burgundy Sale button.
   Mobile: a horizontally scrollable row of category buttons ending with the Sale button.
 
-  Block order sets the layout: each "Category group" is followed by its "Collection link" blocks.
+  Choose a menu (for example the main menu: parent links = groups, child links = collections) or use blocks:
+  each "Category group" block is followed by its "Collection link" blocks.
 {%- endcomment -%}
 
 {%- liquid
@@ -115,6 +116,80 @@
   {%- endfor -%}
 {%- endcapture -%}
 
+{%- comment -%} When a menu is chosen it replaces the blocks: parent links are groups, their child links follow, and a top-level link named like the Sale label becomes the Sale button. {%- endcomment -%}
+{%- assign menu = section.settings.menu -%}
+{%- if menu != blank and menu.links.size > 0 -%}
+  {%- assign sale_title = section.settings.sale_title | default: 'Sale' | downcase | strip -%}
+  {%- capture desktop_items -%}
+    {%- for link in menu.links -%}
+      {%- assign link_title = link.title | downcase | strip -%}
+      {%- if link_title == sale_title -%}
+        <li class="asturan-catbar__sale-item">
+          <a class="asturan-btn asturan-btn--primary asturan-btn--small" href="{{ link.url }}">{{ link.title | escape }}</a>
+        </li>
+      {%- else -%}
+        <li class="asturan-catbar__group">
+          <a
+            class="asturan-catbar__group-name{% if link.active %} is-active{% endif %}"
+            href="{{ link.url }}"
+            {% if link.active %}
+              aria-current="page"
+            {% endif %}
+          >
+            {{- link.title | escape -}}
+          </a>
+          {%- if link.links.size > 0 -%}
+            <span class="asturan-catbar__links">
+              {%- for child in link.links -%}
+                <a
+                  class="asturan-catbar__link{% if child.active %} is-active{% endif %}"
+                  href="{{ child.url }}"
+                  {% if child.active %}
+                    aria-current="page"
+                  {% endif %}
+                >
+                  {{- child.title | escape -}}
+                </a>
+              {%- endfor -%}
+            </span>
+          {%- endif -%}
+        </li>
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endcapture -%}
+
+  {%- capture mobile_items -%}
+    {%- for link in menu.links -%}
+      {%- assign link_title = link.title | downcase | strip -%}
+      {%- if link_title == sale_title or link.links.size == 0 -%}
+        <li>
+          <a
+            class="asturan-chip{% if link_title == sale_title %} asturan-chip--sale{% endif %}{% if link.active %} is-active{% endif %}"
+            href="{{ link.url }}"
+          >
+            {{- link.title | escape -}}
+          </a>
+        </li>
+      {%- else -%}
+        {%- for child in link.links -%}
+          {%- liquid
+            assign child_title = child.title | downcase
+            assign chip_label = child.title
+            unless child_title contains link_title
+              assign chip_label = child.title | append: ' ' | append: link.title
+            endunless
+          -%}
+          <li>
+            <a class="asturan-chip{% if child.active %} is-active{% endif %}" href="{{ child.url }}">
+              {{- chip_label | escape -}}
+            </a>
+          </li>
+        {%- endfor -%}
+      {%- endif -%}
+    {%- endfor -%}
+  {%- endcapture -%}
+{%- endif -%}
+
 <nav
   class="asturan-catbar{% if section.settings.hide_header_menu_desktop %} asturan-catbar--replaces-menu{% endif %}"
   aria-label="{{ section.settings.aria_label | escape }}"
@@ -139,8 +214,15 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Add a Category group, then the Collection links that belong to it. On mobile, each collection link becomes a button in a scrollable row."
+      "content": "Without a menu: add a Category group, then the Collection links that belong to it. On mobile, each collection link becomes a button in a scrollable row."
     },
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "Menu",
+      "info": "Optional. Parent links become groups and their child links follow. A top-level link named like the Sale label becomes the Sale button. Leave empty to use the blocks below."
+    },
+    { "type": "text", "id": "sale_title", "label": "Sale label in the menu", "default": "Sale" },
     {
       "type": "text",
       "id": "aria_label",

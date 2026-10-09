@@ -11,7 +11,7 @@
 -%}
 
 <section
-  class="asturan-hero asturan-hero--{{ section.settings.content_position }} asturan-hero--height-{{ section.settings.height }}{% if section.settings.mobile_text_below %} asturan-hero--stack-mobile{% endif %} asturan-hero--text-{{ section.settings.text_theme }}"
+  class="asturan-hero asturan-hero--style-{{ section.settings.style }} asturan-hero--layout-{{ section.settings.layout }} asturan-hero--{{ section.settings.content_position }} asturan-hero--height-{{ section.settings.height }}{% if section.settings.mobile_text_below %} asturan-hero--stack-mobile{% endif %} asturan-hero--text-{{ section.settings.text_theme }}"
   style="--asturan-hero-overlay: {{ section.settings.overlay_opacity | divided_by: 100.0 }};"
 >
   <div class="asturan-hero__media">
@@ -50,6 +50,9 @@
       {%- if section.settings.heading != blank -%}
         <h1 class="asturan-hero__heading">{{ section.settings.heading }}</h1>
       {%- endif -%}
+      {%- if section.settings.text != blank -%}
+        <div class="asturan-hero__text">{{ section.settings.text }}</div>
+      {%- endif -%}
       <div class="asturan-hero__buttons">
         {%- if section.settings.button_1_label != blank -%}
           <a class="asturan-btn asturan-btn--primary" href="{{ button_1_url }}">
@@ -57,7 +60,7 @@
           </a>
         {%- endif -%}
         {%- if section.settings.button_2_label != blank -%}
-          <a class="asturan-btn asturan-btn--outline" href="{{ button_2_url }}">
+          <a class="asturan-btn asturan-btn--outline-dark" href="{{ button_2_url }}">
             {{- section.settings.button_2_label | escape -}}
           </a>
         {%- endif -%}
@@ -81,6 +84,7 @@
       "info": "Text in italics shows in burgundy italic.",
       "default": "Home of <em>Modest</em> fashion."
     },
+    { "type": "richtext", "id": "text", "label": "Text (optional)" },
     { "type": "header", "content": "Buttons" },
     { "type": "text", "id": "button_1_label", "label": "First button label", "default": "Shop Abayas" },
     { "type": "collection", "id": "button_1_collection", "label": "First button collection" },
@@ -91,11 +95,32 @@
     { "type": "header", "content": "Layout" },
     {
       "type": "select",
+      "id": "style",
+      "label": "Text style",
+      "options": [
+        { "value": "card", "label": "White card on the photo" },
+        { "value": "panel", "label": "Dark panel on the left" },
+        { "value": "plain", "label": "Text directly on the photo" }
+      ],
+      "default": "card"
+    },
+    {
+      "type": "select",
+      "id": "layout",
+      "label": "Layout",
+      "options": [
+        { "value": "full", "label": "Full-width image" },
+        { "value": "split", "label": "Split, arched image on the right" }
+      ],
+      "default": "full"
+    },
+    {
+      "type": "select",
       "id": "height",
       "label": "Height",
       "options": [
         { "value": "medium", "label": "Medium" },
-        { "value": "large", "label": "Large" },
+        { "value": "large", "label": "Large (620px)" },
         { "value": "full", "label": "Full screen" }
       ],
       "default": "large"
@@ -129,7 +154,7 @@
       "max": 60,
       "step": 5,
       "unit": "%",
-      "default": 30
+      "default": 0
     },
     {
       "type": "checkbox",

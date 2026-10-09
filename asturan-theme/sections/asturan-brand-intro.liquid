@@ -1,0 +1,75 @@
+{%- comment -%}
+  Asturan brand intro ("Who we are"): small heading, large burgundy serif headline, short text, a gold
+  serif tagline and two overlapping photos, on a warm white background.
+{%- endcomment -%}
+
+{%- liquid
+  assign button_url = section.settings.button_url | default: routes.all_products_collection_url
+-%}
+
+<section class="asturan-section asturan-intro asturan-bg-cream">
+  <div class="asturan-container asturan-intro__grid">
+    <div class="asturan-intro__content">
+      {%- if section.settings.eyebrow != blank -%}
+        <p class="asturan-eyebrow">{{ section.settings.eyebrow | escape }}</p>
+      {%- endif -%}
+      {%- if section.settings.heading != blank -%}
+        <h2 class="asturan-intro__heading">{{ section.settings.heading | escape }}</h2>
+      {%- endif -%}
+      {%- if section.settings.text != blank -%}
+        <div class="asturan-intro__text">{{ section.settings.text }}</div>
+      {%- endif -%}
+      {%- if section.settings.tagline != blank -%}
+        <p class="asturan-intro__tagline">{{ section.settings.tagline | escape }}</p>
+      {%- endif -%}
+      {%- if section.settings.button_label != blank -%}
+        <a class="asturan-btn asturan-btn--primary" href="{{ button_url }}">{{ section.settings.button_label | escape }}</a>
+      {%- endif -%}
+    </div>
+
+    <div class="asturan-intro__media">
+      {%- for i in (1..2) -%}
+        {%- assign key = 'image_' | append: i -%}
+        {%- assign img = section.settings[key] -%}
+        <div class="asturan-rect asturan-intro__image asturan-intro__image--{{ i }}">
+          {%- if img != blank -%}
+            {{
+              img
+              | image_url: width: 1200
+              | image_tag: widths: '400, 600, 900, 1200', sizes: '(min-width: 990px) 30vw, 50vw', loading: 'lazy'
+            }}
+          {%- else -%}
+            {{ 'lifestyle-2' | placeholder_svg_tag: 'asturan-placeholder' }}
+          {%- endif -%}
+        </div>
+      {%- endfor -%}
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Asturan brand intro",
+  "settings": [
+    { "type": "text", "id": "eyebrow", "label": "Small heading", "default": "Who we are" },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "A refined modest wear brand for everyday elegance."
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "label": "Text",
+      "default": "<p>Asturan Modest Wear offers abayas, hijabs and prayer sets with a focus on polished modest style, comfort, and accessible luxury.</p>"
+    },
+    { "type": "text", "id": "tagline", "label": "Gold tagline", "default": "Home of modest fashion in North America." },
+    { "type": "text", "id": "button_label", "label": "Button label" },
+    { "type": "url", "id": "button_url", "label": "Button link" },
+    { "type": "image_picker", "id": "image_1", "label": "Front photo" },
+    { "type": "image_picker", "id": "image_2", "label": "Back photo" }
+  ],
+  "presets": [{ "name": "Asturan brand intro" }]
+}
+{% endschema %}
