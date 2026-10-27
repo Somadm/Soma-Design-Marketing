@@ -200,6 +200,14 @@
             "mobile_label": "Jersey Hijab",
             "handle": "premium-jersey-hijab"
           }
+        },
+        "sub_twill": {
+          "type": "sublink",
+          "settings": {
+            "label": "Twill Modal Hijab",
+            "mobile_label": "Twill Modal Hijab",
+            "handle": "twill-modal-hijab"
+          }
         }
       },
       "block_order": [
@@ -212,6 +220,7 @@
         "link_print",
         "sub_modal",
         "sub_jersey",
+        "sub_twill",
         "group_prayer",
         "sale"
       ],

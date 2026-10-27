@@ -13,6 +13,10 @@
         type="image/png"
         href="{{ settings.favicon | image_url: width: 32, height: 32 }}"
       >
+    {%- else -%}
+      {%- comment -%} Asturan: the gold A mark on burgundy, used until a favicon is uploaded {%- endcomment -%}
+      <link rel="icon" type="image/png" href="{{ 'asturan-favicon.png' | asset_url }}">
+      <link rel="apple-touch-icon" href="{{ 'asturan-favicon.png' | asset_url }}">
     {%- endif -%}
 
     {%- render 'view-transition-opt-in' -%}

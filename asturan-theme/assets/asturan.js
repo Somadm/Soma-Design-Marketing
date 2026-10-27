@@ -264,6 +264,7 @@ function initSlideshows() {
       slides.forEach((slide, i) => {
         const active = i === index;
         slide.classList.toggle('is-active', active);
+        slide.toggleAttribute('inert', !active);
         if (active) {
           slide.removeAttribute('aria-hidden');
           slide.removeAttribute('tabindex');

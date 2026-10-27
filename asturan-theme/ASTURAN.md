@@ -45,6 +45,17 @@ the first product whose name contains "Metallic Satin" (then the first Open Abay
 and Premium Jersey Hijab (category bar → Dropdown item blocks). Each item links to the product with that
 handle, or to a store search for its name if the handle differs. On mobile they appear as their own buttons.
 
+**The Hijab Edit:** the last hero slide is a burgundy text slide ("The Hijab Edit", "Chiffon, viscose and
+print hijabs, from $5.99.", Shop Hijabs and Print Hijabs) with three hijab photos included in the theme
+(`assets/asturan-hijab-1..3.jpg`). Edit its text, links and photos in Customize → Hero → The Hijab Edit
+slide. Slides change every 6 seconds.
+
+**Favicon:** the gold A mark on burgundy (`assets/asturan-favicon.png`, 512×512) is used until a favicon is
+uploaded under Theme settings → Logo and favicon.
+
+**Hijab fabrics:** the Print dropdown lists Premium Printed Modal Hijab, Premium Jersey Hijab and Twill Modal
+Hijab.
+
 **Categories on the landing page:** every category is visible on the homepage without opening a menu:
 in the category bar under the logo (a scrollable button row on mobile), and in the 8 category tiles
 directly below the hero.

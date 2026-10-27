@@ -2144,3 +2144,164 @@ body {
   text-transform: uppercase;
   color: var(--asturan-burgundy);
 }
+
+/* ---------- Hero: The Hijab Edit slide ---------- */
+
+.asturan-edit {
+  display: grid;
+  grid-template-columns: 11fr 9fr;
+  align-items: center;
+  gap: 8px;
+  aspect-ratio: 1610 / 977;
+  padding: 14px 16px;
+  overflow: hidden;
+  background: var(--asturan-burgundy);
+  color: var(--asturan-white);
+}
+
+.asturan-hero--fit-cover .asturan-edit {
+  aspect-ratio: auto;
+  height: 100%;
+}
+
+.asturan-edit__content .asturan-eyebrow {
+  margin-block-end: 6px;
+  font-size: 0.5625rem;
+}
+
+.asturan-edit__heading {
+  margin: 0 0 6px;
+  font-family: var(--asturan-font-heading);
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1.05;
+  color: var(--asturan-white);
+}
+
+.asturan-edit__text {
+  margin: 0 0 12px;
+  font-family: var(--asturan-font-body);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.85);
+}
+
+.asturan-edit__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.asturan-edit__buttons .asturan-btn {
+  min-height: var(--asturan-tap);
+  padding: 8px 16px;
+}
+
+.asturan-edit__buttons .asturan-btn:nth-child(2) {
+  display: none;
+}
+
+.asturan-btn--outline-light {
+  border-color: var(--asturan-white);
+  color: var(--asturan-white);
+}
+
+.asturan-btn--outline-light:hover {
+  background: var(--asturan-white);
+  color: var(--asturan-burgundy);
+}
+
+.asturan-edit__media {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.asturan-edit__frame {
+  flex: 0 0 auto;
+  width: 54%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 3px solid var(--asturan-white);
+  background: var(--asturan-white);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.25);
+}
+
+.asturan-edit__frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asturan-edit__frame--2 {
+  margin-inline-start: -14%;
+  transform: translateY(10%);
+}
+
+.asturan-edit__frame--3 {
+  display: none;
+}
+
+@media screen and (min-width: 750px) {
+  .asturan-edit {
+    grid-template-columns: 5fr 7fr;
+    gap: 40px;
+    padding: 40px var(--asturan-page-pad);
+  }
+
+  .asturan-edit__content .asturan-eyebrow {
+    margin-block-end: 14px;
+    font-size: 0.6875rem;
+  }
+
+  .asturan-edit__heading {
+    margin-block-end: 16px;
+    font-size: 3rem;
+  }
+
+  .asturan-edit__text {
+    margin-block-end: 28px;
+    font-size: 1rem;
+  }
+
+  .asturan-edit__buttons .asturan-btn {
+    min-height: 50px;
+    padding: 12px 28px;
+  }
+
+  .asturan-edit__buttons .asturan-btn:nth-child(2) {
+    display: inline-flex;
+  }
+
+  .asturan-edit__media {
+    gap: 18px;
+  }
+
+  .asturan-edit__frame {
+    width: calc((100% - 36px) / 3);
+    border-width: 4px;
+  }
+
+  .asturan-edit__frame--2 {
+    margin: 0;
+    transform: translateY(8%);
+  }
+
+  .asturan-edit__frame--3 {
+    display: block;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  .asturan-edit__heading {
+    font-size: 4.25rem;
+  }
+}
+
+/* Keep the active slide marker visible on the burgundy slide too */
+.asturan-slides__dot[aria-current='true']::after {
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.85);
+}

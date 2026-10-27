@@ -27,13 +27,21 @@
         "style": "none",
         "text": "<p>A premium modest fashion experience for women across North America.</p>",
         "image_fit": "whole",
-        "autoplay_seconds": 5,
+        "autoplay_seconds": 6,
         "slideshow_label": "Featured collections",
         "use_bundled_banners": true,
         "bundled_link_1": "shopify://collections/open-abayas",
         "bundled_link_2": "shopify://collections/open-abayas",
         "bundled_link_3": "shopify://collections/closed-abayas",
-        "bundled_link_4": "shopify://collections/prayer-sets"
+        "bundled_link_4": "shopify://collections/prayer-sets",
+        "edit_enabled": true,
+        "edit_eyebrow": "New in hijabs",
+        "edit_heading": "The Hijab Edit",
+        "edit_text": "Chiffon, viscose and print hijabs, from $5.99.",
+        "edit_button_1_label": "Shop Hijabs",
+        "edit_button_1_url": "shopify://collections/hijabs",
+        "edit_button_2_label": "Print Hijabs",
+        "edit_button_2_url": "shopify://collections/print-hijabs"
       }
     },
     "categories": {
