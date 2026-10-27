@@ -9,6 +9,7 @@ Source footage and a brief for animating in Claude Design.
 | `video/navy-satin-abaya-walk.mov` | Original upload (Higgsfield export), 1072×1936, 9:16, 4.9 s, 29.2 fps, with audio |
 | `video/navy-satin-abaya-walk.mp4` | Web-ready H.264 copy of the same clip (faststart), for embedding in a design |
 | `video/navy-satin-abaya-walk-poster.jpg` | Still frame at 1.5 s, for a poster or thumbnail |
+| `reel/asturan-navy-abaya-reel.mp4` | Finished reel, 1080×1920, 7.9 s: the walk with animated product text, then a 3 s end card |
 
 ## Shot description
 
