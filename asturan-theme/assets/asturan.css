@@ -2558,17 +2558,18 @@ body {
 /* Gentle entrance: text rises in, photos reveal; nothing moves for reduced-motion visitors */
 @media (prefers-reduced-motion: no-preference) {
   .asturan-ed--animate
+    .is-active
     :is(.asturan-ed__label, .asturan-ed__line, .asturan-ed__copy, .asturan-ed__links, .asturan-ed__caption) {
     animation: asturan-ed-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
     animation-delay: var(--d, 0s);
   }
 
-  .asturan-ed--animate .asturan-ed__photo {
+  .asturan-ed--animate .is-active .asturan-ed__photo {
     animation: asturan-ed-reveal 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) both;
     animation-delay: var(--d, 0s);
   }
 
-  .asturan-ed--animate .asturan-ed__photo img {
+  .asturan-ed--animate .is-active .asturan-ed__photo img {
     animation: asturan-ed-settle 1.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
     animation-delay: var(--d, 0s);
   }
@@ -2936,5 +2937,249 @@ body {
 
   .asturan-ed__caption {
     inset-block-end: -8%;
+  }
+}
+
+/* ---------- Editorial hero: panels and sliding ---------- */
+
+.asturan-ed__viewport {
+  overflow: hidden;
+}
+
+.asturan-ed__track {
+  display: flex;
+  align-items: stretch;
+}
+
+.asturan-ed__panel {
+  flex: 0 0 100%;
+  min-width: 100%;
+}
+
+/* Photo layers: the large photo fills its layer; the smaller one overlaps at the bottom corner */
+.asturan-ed__layer--main {
+  position: relative;
+  z-index: 1;
+}
+
+.asturan-ed__layer--second {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  z-index: 2;
+  width: 46%;
+}
+
+.asturan-ed__layer--second .asturan-ed__photo--second {
+  position: relative;
+  inset: auto;
+  width: 100%;
+}
+
+@media screen and (min-width: 990px) {
+  .asturan-ed__layer--second {
+    inset-block-end: -4%;
+    inset-inline-start: 2%;
+    width: 38%;
+  }
+
+  /* Mirrored panel: photos on the left, text on the right */
+  .asturan-ed__panel--left .asturan-ed__inner {
+    grid-template-columns: 6fr 5fr;
+  }
+
+  .asturan-ed__panel--left .asturan-ed__text {
+    order: 2;
+    padding-inline-start: 24px;
+  }
+
+  .asturan-ed__panel--left .asturan-ed__media {
+    order: 1;
+  }
+
+  .asturan-ed__panel--left .asturan-ed__photo--main {
+    margin-inline-start: 4%;
+    margin-inline-end: auto;
+  }
+
+  .asturan-ed__panel--left .asturan-ed__layer--second {
+    inset-inline-start: auto;
+    inset-inline-end: 2%;
+  }
+
+  .asturan-ed__panel--left .asturan-ed__shape--circle {
+    inset-inline-end: auto;
+    inset-inline-start: -10%;
+  }
+
+  .asturan-ed__panel--left .asturan-ed__shape--arch {
+    inset-inline-start: auto;
+    inset-inline-end: 10%;
+  }
+
+  .asturan-ed__panel--left .asturan-ed__caption {
+    inset-inline-end: auto;
+    inset-inline-start: 4%;
+  }
+
+  .asturan-ed__panel--left .asturan-ed__line--accent {
+    margin-inline-end: 0;
+  }
+}
+
+/* Sliding: the track glides; each layer drifts by its depth for a parallax feel */
+.asturan-ed--slider {
+  --ed-duration: 1.1s;
+  --ed-ease: cubic-bezier(0.77, 0, 0.18, 1);
+}
+
+.asturan-ed--slider .asturan-ed__track {
+  transform: translate3d(calc(var(--ed-index, 0) * -100%), 0, 0);
+  transition: transform var(--ed-duration) var(--ed-ease);
+  will-change: transform;
+}
+
+.asturan-ed--slider .asturan-ed__layer {
+  transform: translate3d(calc(var(--rel, 0) * var(--depth, 0) * 42%), 0, 0);
+  transition: transform var(--ed-duration) var(--ed-ease);
+}
+
+.asturan-ed--slider.is-rewinding {
+  --ed-duration: 1.6s;
+}
+
+.asturan-ed--slider .asturan-ed__inner {
+  padding-block-end: 104px;
+}
+
+/* Controls: 01 ─── 04, arrows and pause */
+.asturan-ed__controls {
+  position: absolute;
+  inset-block-end: 28px;
+  inset-inline: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: var(--asturan-page-pad);
+  pointer-events: none;
+}
+
+.asturan-ed__controls > * {
+  pointer-events: auto;
+}
+
+.asturan-ed__counter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--asturan-font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--asturan-black);
+}
+
+.asturan-ed__counter-line {
+  position: relative;
+  display: block;
+  width: 72px;
+  height: 1px;
+  background: var(--asturan-line-strong);
+  overflow: hidden;
+}
+
+.asturan-ed__counter-line span {
+  position: absolute;
+  inset: 0;
+  background: var(--asturan-burgundy);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+.asturan-ed__counter-line span.is-running {
+  transform: scaleX(1);
+  transition: transform var(--ed-interval, 5s) linear;
+}
+
+.asturan-ed__buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.asturan-ed__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--asturan-tap);
+  height: var(--asturan-tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--asturan-black);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    transform 0.3s ease;
+}
+
+.asturan-ed__btn:hover {
+  color: var(--asturan-burgundy);
+}
+
+.asturan-ed__btn[data-ed-prev]:hover {
+  transform: translateX(-4px);
+}
+
+.asturan-ed__btn[data-ed-next]:hover {
+  transform: translateX(4px);
+}
+
+.asturan-ed__btn:focus-visible {
+  outline: 2px solid var(--asturan-gold);
+  outline-offset: 2px;
+}
+
+.asturan-ed__btn--pause {
+  width: var(--asturan-tap);
+  height: var(--asturan-tap);
+  margin-inline-start: 6px;
+  border: 1px solid var(--asturan-line-strong);
+  border-radius: 50%;
+}
+
+.asturan-ed__icon-play,
+.asturan-ed__btn--pause[aria-pressed='true'] .asturan-ed__icon-pause {
+  display: none;
+}
+
+.asturan-ed__btn--pause[aria-pressed='true'] .asturan-ed__icon-play {
+  display: block;
+}
+
+@media screen and (max-width: 989px) {
+  .asturan-ed--slider .asturan-ed__inner {
+    padding-block-end: 88px;
+  }
+
+  .asturan-ed__controls {
+    inset-block-end: 20px;
+  }
+}
+
+/* Reduced motion: no gliding or parallax; panels change instantly and do not play on their own */
+@media (prefers-reduced-motion: reduce) {
+  .asturan-ed--slider .asturan-ed__track,
+  .asturan-ed--slider .asturan-ed__layer {
+    transition: none;
+  }
+
+  .asturan-ed--slider .asturan-ed__layer {
+    transform: none;
   }
 }

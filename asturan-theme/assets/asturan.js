@@ -517,3 +517,178 @@ class AsturanPopupRoot extends HTMLElement {
 }
 
 if (!customElements.get('asturan-popup-root')) customElements.define('asturan-popup-root', AsturanPopupRoot);
+
+/* ---------- Editorial hero slider ---------- */
+
+function initEditorialSliders() {
+  document.querySelectorAll('[data-asturan-ed-slider]').forEach((root) => {
+    if (!(root instanceof HTMLElement) || root.dataset.ready) return;
+    root.dataset.ready = 'true';
+
+    const panels = Array.from(root.querySelectorAll('[data-ed-panel]'));
+    const viewport = root.querySelector('.asturan-ed__viewport');
+    const current = root.querySelector('[data-ed-current]');
+    const progress = root.querySelector('[data-ed-progress]');
+    const live = root.querySelector('[data-ed-live]');
+    const pauseButton = root.querySelector('[data-ed-pause]');
+    if (panels.length < 2) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const interval = Math.max(3000, Number(root.dataset.interval) || 5000);
+    let index = 0;
+    let timer = 0;
+    let userPaused = root.dataset.autoplay !== 'true' || reduceMotion;
+    let hoverPaused = false;
+    root.style.setProperty('--ed-interval', `${interval}ms`);
+
+    const pad = (n) => String(n).padStart(2, '0');
+
+    const layout = () => {
+      root.style.setProperty('--ed-index', String(index));
+      panels.forEach((panel, i) => panel.style.setProperty('--rel', String(i - index)));
+    };
+
+    const restartProgress = () => {
+      if (!progress) return;
+      progress.classList.remove('is-running');
+      if (isPlaying()) {
+        void progress.offsetWidth; // restart the CSS transition
+        progress.classList.add('is-running');
+      }
+    };
+
+    const isPlaying = () => !userPaused && !hoverPaused && !document.hidden;
+
+    const schedule = () => {
+      window.clearTimeout(timer);
+      restartProgress();
+      if (isPlaying()) timer = window.setTimeout(() => next(false), interval);
+    };
+
+    const go = (target, { announce = false, rewind = false } = {}) => {
+      const previous = panels[index];
+      index = (target + panels.length) % panels.length;
+      const panel = panels[index];
+      root.classList.toggle('is-rewinding', rewind);
+      layout();
+
+      previous.classList.remove('is-active');
+      previous.setAttribute('aria-hidden', 'true');
+      previous.setAttribute('inert', '');
+      panel.removeAttribute('aria-hidden');
+      panel.removeAttribute('inert');
+      void panel.offsetWidth; // let the entrance animation play again
+      panel.classList.add('is-active');
+      panel.querySelectorAll('img[loading="lazy"]').forEach((img) => img.setAttribute('loading', 'eager'));
+      panels[(index + 1) % panels.length]
+        .querySelectorAll('img[loading="lazy"]')
+        .forEach((img) => img.setAttribute('loading', 'eager'));
+
+      if (current) current.textContent = pad(index + 1);
+      if (announce && live) live.textContent = `${index + 1} / ${panels.length}`;
+      schedule();
+    };
+
+    const next = (announce = true) => {
+      if (index === panels.length - 1) go(0, { announce, rewind: true });
+      else go(index + 1, { announce });
+    };
+    const prev = () => go(index - 1, { announce: true, rewind: index === 0 });
+
+    root.querySelector('[data-ed-next]')?.addEventListener('click', () => next(true));
+    root.querySelector('[data-ed-prev]')?.addEventListener('click', prev);
+
+    const setPaused = (paused) => {
+      userPaused = paused;
+      if (pauseButton) {
+        pauseButton.setAttribute('aria-pressed', String(paused));
+        pauseButton.setAttribute(
+          'aria-label',
+          (paused ? pauseButton.dataset.labelPlay : pauseButton.dataset.labelPause) || '',
+        );
+      }
+      schedule();
+    };
+    pauseButton?.addEventListener('click', () => setPaused(!userPaused));
+    if (userPaused) setPaused(true);
+
+    // Keyboard focus inside the hero holds the current panel; the Pause button stops it for good.
+    root.addEventListener('focusin', () => {
+      hoverPaused = true;
+      schedule();
+    });
+    root.addEventListener('focusout', (event) => {
+      if (!root.contains(/** @type {Node} */ (event.relatedTarget))) {
+        hoverPaused = false;
+        schedule();
+      }
+    });
+    document.addEventListener('visibilitychange', schedule);
+
+    root.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        next(true);
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        prev();
+      }
+    });
+
+    // Swipe on touch screens
+    let startX = 0;
+    let startY = 0;
+    let swiped = false;
+    viewport?.addEventListener(
+      'touchstart',
+      (event) => {
+        startX = event.touches[0].clientX;
+        startY = event.touches[0].clientY;
+        swiped = false;
+      },
+      { passive: true },
+    );
+    viewport?.addEventListener(
+      'touchend',
+      (event) => {
+        const dx = event.changedTouches[0].clientX - startX;
+        const dy = event.changedTouches[0].clientY - startY;
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+          swiped = true;
+          if (dx < 0) next(true);
+          else prev();
+        }
+      },
+      { passive: true },
+    );
+    viewport?.addEventListener(
+      'click',
+      (event) => {
+        if (swiped) {
+          event.preventDefault();
+          swiped = false;
+        }
+      },
+      true,
+    );
+
+    // Theme editor: show the selected panel and hold it there
+    document.addEventListener('shopify:block:select', (event) => {
+      const i = panels.findIndex((panel) => panel.contains(/** @type {Node} */ (event.target)));
+      if (i >= 0) {
+        setPaused(true);
+        go(i);
+      }
+    });
+
+    layout();
+    schedule();
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initEditorialSliders);
+} else {
+  initEditorialSliders();
+}
+document.addEventListener('shopify:section:load', initEditorialSliders);

@@ -1,101 +1,81 @@
 {%- comment -%}
   Asturan editorial hero: fashion-magazine layout on a light background. Oversized serif headline, small
-  label and text, arrow-style shopping links, and two overlapping photos (a large model portrait and a
-  smaller lifestyle or product photo) over soft brand-coloured shapes. Gentle entrance animation that
-  switches off for visitors who prefer reduced motion. Photos fall back to Asturan photos included in
-  the theme until others are chosen.
+  label and text, arrow-style shopping links, and two overlapping photos over soft brand-coloured shapes.
+  Add Panel blocks to make it slide: the panels glide sideways every few seconds with a layered parallax
+  movement and rewind to the first after the last, with previous, next and pause controls. Without Panel
+  blocks the section shows one panel from the settings below. Motion is off for reduced-motion visitors.
 {%- endcomment -%}
 
 {%- liquid
-  assign link_1_url = section.settings.link_1_url | default: section.settings.link_1_collection.url | default: routes.all_products_collection_url
-  assign link_2_url = section.settings.link_2_url | default: section.settings.link_2_collection.url | default: routes.all_products_collection_url
-  assign main_image = section.settings.image_main
-  assign second_image = section.settings.image_second
+  assign panel_count = section.blocks.size
+  if panel_count == 0
+    assign panel_count = 1
+  endif
 -%}
 
 <section
-  class="asturan-ed asturan-ed--bg-{{ section.settings.background }}{% if section.settings.animate %} asturan-ed--animate{% endif %}"
-  aria-labelledby="AsturanEdHeading-{{ section.id }}"
+  class="asturan-ed asturan-ed--bg-{{ section.settings.background }}{% if section.settings.animate %} asturan-ed--animate{% endif %}{% if panel_count > 1 %} asturan-ed--slider{% endif %}"
+  {% if panel_count > 1 %}
+    role="region"
+    aria-roledescription="carousel"
+    aria-label="{{ section.settings.slider_label | escape }}"
+    data-asturan-ed-slider
+    data-interval="{{ section.settings.autoplay_seconds | times: 1000 }}"
+    data-autoplay="{{ section.settings.autoplay }}"
+  {% else %}
+    aria-labelledby="AsturanEdHeading-{{ section.id }}-0"
+  {% endif %}
 >
-  <div class="asturan-ed__inner">
-    <div class="asturan-ed__text">
-      {%- if section.settings.label != blank -%}
-        <p class="asturan-ed__label" style="--d: 0.05s;">{{ section.settings.label | escape }}</p>
-      {%- endif -%}
-      <h1 id="AsturanEdHeading-{{ section.id }}" class="asturan-ed__heading">
-        <span class="asturan-ed__line" style="--d: 0.15s;">{{ section.settings.heading_1 | escape }}</span>
-        {%- if section.settings.heading_2 != blank -%}
-          <span class="asturan-ed__line asturan-ed__line--accent" style="--d: 0.3s;">
-            {{- section.settings.heading_2 | escape -}}
-          </span>
-        {%- endif -%}
-      </h1>
-      {%- if section.settings.text != blank -%}
-        <p class="asturan-ed__copy" style="--d: 0.45s;">{{ section.settings.text | escape }}</p>
-      {%- endif -%}
-      <div class="asturan-ed__links" style="--d: 0.55s;">
-        {%- if section.settings.link_1_label != blank -%}
-          <a class="asturan-ed__link" href="{{ link_1_url }}">
-            <span>{{ section.settings.link_1_label | escape }}</span>
-            <svg aria-hidden="true" focusable="false" width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M0 6h32M27 1l5 5-5 5"/></svg>
-          </a>
-        {%- endif -%}
-        {%- if section.settings.link_2_label != blank -%}
-          <a class="asturan-ed__link" href="{{ link_2_url }}">
-            <span>{{ section.settings.link_2_label | escape }}</span>
-            <svg aria-hidden="true" focusable="false" width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M0 6h32M27 1l5 5-5 5"/></svg>
-          </a>
-        {%- endif -%}
-      </div>
-    </div>
-
-    <div class="asturan-ed__media">
-      {%- if section.settings.show_shapes -%}
-        <span class="asturan-ed__shape asturan-ed__shape--circle" aria-hidden="true"></span>
-        <span class="asturan-ed__shape asturan-ed__shape--arch" aria-hidden="true"></span>
-      {%- endif -%}
-
-      <a class="asturan-ed__photo asturan-ed__photo--main" href="{{ link_1_url }}" tabindex="-1" aria-hidden="true" style="--d: 0.2s;">
-        {%- if main_image != blank -%}
-          {{
-            main_image
-            | image_url: width: 1400
-            | image_tag:
-              widths: '480, 700, 900, 1100, 1400',
-              sizes: '(min-width: 990px) 34vw, 72vw',
-              loading: 'eager',
-              fetchpriority: 'high',
-              alt: ''
-          }}
-        {%- else -%}
-          <img
-            src="{{ 'asturan-hero-portrait.jpg' | asset_url }}"
-            alt=""
-            width="710"
-            height="1080"
-            loading="eager"
-            fetchpriority="high"
-          >
-        {%- endif -%}
-      </a>
-
-      <a class="asturan-ed__photo asturan-ed__photo--second" href="{{ link_2_url }}" tabindex="-1" aria-hidden="true" style="--d: 0.45s;">
-        {%- if second_image != blank -%}
-          {{
-            second_image
-            | image_url: width: 900
-            | image_tag: widths: '320, 480, 700, 900', sizes: '(min-width: 990px) 20vw, 46vw', loading: 'eager', alt: ''
-          }}
-        {%- else -%}
-          <img src="{{ 'asturan-hero-lifestyle.jpg' | asset_url }}" alt="" width="732" height="977" loading="eager">
-        {%- endif -%}
-      </a>
-
-      {%- if section.settings.caption != blank -%}
-        <p class="asturan-ed__caption" style="--d: 0.65s;">{{ section.settings.caption | escape }}</p>
+  <div class="asturan-ed__viewport">
+    <div class="asturan-ed__track" data-ed-track>
+      {%- if section.blocks.size > 0 -%}
+        {%- for block in section.blocks -%}
+          {%- assign heading_id = 'AsturanEdHeading-' | append: section.id | append: '-' | append: forloop.index0 -%}
+          {% render 'asturan-ed-panel',
+            s: block.settings,
+            index: forloop.index0,
+            count: panel_count,
+            id: heading_id,
+            attributes: block.shopify_attributes
+          %}
+        {%- endfor -%}
+      {%- else -%}
+        {%- assign heading_id = 'AsturanEdHeading-' | append: section.id | append: '-0' -%}
+        {% render 'asturan-ed-panel', s: section.settings, index: 0, count: 1, id: heading_id %}
       {%- endif -%}
     </div>
   </div>
+
+  {%- if panel_count > 1 -%}
+    <div class="asturan-ed__controls">
+      <p class="asturan-ed__counter" aria-hidden="true">
+        <span data-ed-current>01</span>
+        <span class="asturan-ed__counter-line"><span data-ed-progress></span></span>
+        <span>{% if panel_count < 10 %}0{% endif %}{{ panel_count }}</span>
+      </p>
+      <div class="asturan-ed__buttons">
+        <button type="button" class="asturan-ed__btn" data-ed-prev aria-label="{{ section.settings.prev_label | escape }}">
+          <svg aria-hidden="true" focusable="false" width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M34 6H2M7 1 2 6l5 5"/></svg>
+        </button>
+        <button type="button" class="asturan-ed__btn" data-ed-next aria-label="{{ section.settings.next_label | escape }}">
+          <svg aria-hidden="true" focusable="false" width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M0 6h32M27 1l5 5-5 5"/></svg>
+        </button>
+        <button
+          type="button"
+          class="asturan-ed__btn asturan-ed__btn--pause"
+          data-ed-pause
+          aria-pressed="false"
+          aria-label="{{ section.settings.pause_label | escape }}"
+          data-label-pause="{{ section.settings.pause_label | escape }}"
+          data-label-play="{{ section.settings.play_label | escape }}"
+        >
+          <svg class="asturan-ed__icon-pause" aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="1" width="2.6" height="10"/><rect x="7.4" y="1" width="2.6" height="10"/></svg>
+          <svg class="asturan-ed__icon-play" aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M3 1.5v9l7.5-4.5z"/></svg>
+        </button>
+      </div>
+      <p class="visually-hidden" aria-live="polite" data-ed-live></p>
+    </div>
+  {%- endif -%}
 </section>
 
 {% schema %}
@@ -138,6 +118,27 @@
       "info": "About 3:4. Leave empty to use the included Asturan photo."
     },
     { "type": "text", "id": "caption", "label": "Small caption by the photos", "default": "New season · Abayas & hijabs" },
+    { "type": "header", "content": "Sliding" },
+    {
+      "type": "paragraph",
+      "content": "Add Panel blocks to make the hero slide. Each panel has its own text, links and photos."
+    },
+    { "type": "checkbox", "id": "autoplay", "label": "Slide automatically", "default": true },
+    {
+      "type": "range",
+      "id": "autoplay_seconds",
+      "label": "Time on each panel",
+      "min": 3,
+      "max": 12,
+      "step": 1,
+      "unit": "s",
+      "default": 5
+    },
+    { "type": "text", "id": "slider_label", "label": "Slider accessible name", "default": "Asturan highlights" },
+    { "type": "text", "id": "prev_label", "label": "Previous button label", "default": "Previous" },
+    { "type": "text", "id": "next_label", "label": "Next button label", "default": "Next" },
+    { "type": "text", "id": "pause_label", "label": "Pause button label", "default": "Pause" },
+    { "type": "text", "id": "play_label", "label": "Play button label", "default": "Play" },
     { "type": "header", "content": "Style" },
     {
       "type": "select",
@@ -156,6 +157,73 @@
       "label": "Gentle entrance animation",
       "info": "Always off for visitors who prefer reduced motion.",
       "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "panel",
+      "name": "Panel",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Small label", "default": "ASTURAN MODEST" },
+        { "type": "text", "id": "heading_1", "label": "Headline, first line", "default": "Modest style." },
+        { "type": "text", "id": "heading_2", "label": "Headline, second line", "info": "Shown in italic burgundy.", "default": "Beautifully yours." },
+        { "type": "text", "id": "text", "label": "Supporting text" },
+        { "type": "text", "id": "link_1_label", "label": "First link label", "default": "SHOP HIJABS" },
+        { "type": "collection", "id": "link_1_collection", "label": "First link collection" },
+        { "type": "url", "id": "link_1_url", "label": "First link (overrides collection)" },
+        { "type": "text", "id": "link_2_label", "label": "Second link label", "default": "SHOP ABAYAS" },
+        { "type": "collection", "id": "link_2_collection", "label": "Second link collection" },
+        { "type": "url", "id": "link_2_url", "label": "Second link (overrides collection)" },
+        {
+          "type": "select",
+          "id": "layout",
+          "label": "Photos on the",
+          "options": [
+            { "value": "right", "label": "Right" },
+            { "value": "left", "label": "Left" }
+          ],
+          "default": "right"
+        },
+        { "type": "image_picker", "id": "image_main", "label": "Large photo" },
+        {
+          "type": "select",
+          "id": "fallback_main",
+          "label": "Included large photo",
+          "info": "Used when no large photo is chosen.",
+          "options": [
+            { "value": "asturan-hero-portrait.jpg", "label": "Grey hijab portrait" },
+            { "value": "asturan-hero-lifestyle.jpg", "label": "Black marble abaya" },
+            { "value": "asturan-popup.jpg", "label": "Brown metallic abaya" },
+            { "value": "asturan-hero-purple.jpg", "label": "Purple metallic abaya" },
+            { "value": "asturan-hero-embroidered.jpg", "label": "Embroidered closed abaya" },
+            { "value": "asturan-hero-prayer.jpg", "label": "Pink prayer set" },
+            { "value": "asturan-hijab-1.jpg", "label": "Polka dot hijab" },
+            { "value": "asturan-hijab-2.jpg", "label": "Wave print hijab" },
+            { "value": "asturan-hijab-3.jpg", "label": "Floral modal hijab" }
+          ],
+          "default": "asturan-hero-portrait.jpg"
+        },
+        { "type": "image_picker", "id": "image_second", "label": "Smaller photo" },
+        {
+          "type": "select",
+          "id": "fallback_second",
+          "label": "Included smaller photo",
+          "info": "Used when no smaller photo is chosen.",
+          "options": [
+            { "value": "asturan-hero-portrait.jpg", "label": "Grey hijab portrait" },
+            { "value": "asturan-hero-lifestyle.jpg", "label": "Black marble abaya" },
+            { "value": "asturan-popup.jpg", "label": "Brown metallic abaya" },
+            { "value": "asturan-hero-purple.jpg", "label": "Purple metallic abaya" },
+            { "value": "asturan-hero-embroidered.jpg", "label": "Embroidered closed abaya" },
+            { "value": "asturan-hero-prayer.jpg", "label": "Pink prayer set" },
+            { "value": "asturan-hijab-1.jpg", "label": "Polka dot hijab" },
+            { "value": "asturan-hijab-2.jpg", "label": "Wave print hijab" },
+            { "value": "asturan-hijab-3.jpg", "label": "Floral modal hijab" }
+          ],
+          "default": "asturan-hero-lifestyle.jpg"
+        },
+        { "type": "text", "id": "caption", "label": "Small caption by the photos" }
+      ]
     }
   ],
   "presets": [{ "name": "Asturan editorial hero" }]

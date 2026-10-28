@@ -258,8 +258,87 @@
         "caption": "New season · Abayas & hijabs",
         "background": "white",
         "show_shapes": true,
-        "animate": true
-      }
+        "animate": true,
+        "autoplay": true,
+        "autoplay_seconds": 5,
+        "slider_label": "Asturan highlights"
+      },
+      "blocks": {
+        "panel_modest": {
+          "type": "panel",
+          "settings": {
+            "label": "ASTURAN MODEST",
+            "heading_1": "Modest style.",
+            "heading_2": "Beautifully yours.",
+            "text": "Discover hijabs and abayas for everyday elegance.",
+            "link_1_label": "SHOP HIJABS",
+            "link_1_collection": "hijabs",
+            "link_2_label": "SHOP ABAYAS",
+            "link_2_collection": "abayas",
+            "layout": "right",
+            "fallback_main": "asturan-hero-portrait.jpg",
+            "fallback_second": "asturan-hero-lifestyle.jpg",
+            "caption": "New season · Abayas & hijabs"
+          }
+        },
+        "panel_hijabs": {
+          "type": "panel",
+          "settings": {
+            "label": "THE HIJAB EDIT",
+            "heading_1": "Light as air.",
+            "heading_2": "Made to drape.",
+            "text": "Chiffon, viscose, jersey and printed modal hijabs, from $5.99.",
+            "link_1_label": "SHOP HIJABS",
+            "link_1_collection": "hijabs",
+            "link_2_label": "PRINT HIJABS",
+            "link_2_collection": "print-hijabs",
+            "layout": "left",
+            "fallback_main": "asturan-hijab-3.jpg",
+            "fallback_second": "asturan-hijab-1.jpg",
+            "caption": "Printed modal · Jersey · Chiffon"
+          }
+        },
+        "panel_satin": {
+          "type": "panel",
+          "settings": {
+            "label": "OCCASION WEAR",
+            "heading_1": "Metallic satin.",
+            "heading_2": "Made to be seen.",
+            "text": "Open abayas with matching belts and coordinated hijabs.",
+            "link_1_label": "SHOP OPEN ABAYAS",
+            "link_1_collection": "open-abayas",
+            "link_2_label": "ALL ABAYAS",
+            "link_2_collection": "abayas",
+            "layout": "right",
+            "fallback_main": "asturan-popup.jpg",
+            "fallback_second": "asturan-hero-purple.jpg",
+            "caption": "Open silhouette · Matching belt"
+          }
+        },
+        "panel_prayer": {
+          "type": "panel",
+          "settings": {
+            "label": "PRAYER SETS",
+            "heading_1": "Pray in comfort.",
+            "heading_2": "Dressed in grace.",
+            "text": "Soft, flowing prayer sets for every day.",
+            "link_1_label": "SHOP PRAYER SETS",
+            "link_1_collection": "prayer-sets",
+            "link_2_label": "SHOP HIJABS",
+            "link_2_collection": "hijabs",
+            "layout": "left",
+            "fallback_main": "asturan-hero-prayer.jpg",
+            "fallback_second": "asturan-hero-embroidered.jpg",
+            "caption": "Prayer sets · Closed abayas"
+          }
+        }
+      },
+      "block_order": [
+        "panel_modest",
+        "panel_hijabs",
+        "panel_satin",
+        "panel_prayer"
+      ]
     }
   },
   "order": [

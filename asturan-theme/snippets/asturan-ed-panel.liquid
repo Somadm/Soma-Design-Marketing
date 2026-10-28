@@ -1,0 +1,117 @@
+{%- doc -%}
+  One panel of the Asturan editorial hero: small label, two-line serif headline, supporting text, two
+  arrow links, and a large photo overlapping a smaller one over soft brand shapes. Layers carry a depth
+  value so they slide at different speeds (parallax) when the hero moves between panels.
+
+  @param {object} s - Settings object (section or block settings)
+  @param {number} index - Panel position, starting at 0
+  @param {number} count - Number of panels
+  @param {string} id - Unique id for the heading
+  @param {string} [attributes] - Theme editor attributes for the block
+{%- enddoc -%}
+
+{%- liquid
+  assign link_1_url = s.link_1_url | default: s.link_1_collection.url | default: routes.all_products_collection_url
+  assign link_2_url = s.link_2_url | default: s.link_2_collection.url | default: routes.all_products_collection_url
+  assign main_fallback = s.fallback_main | default: 'asturan-hero-portrait.jpg'
+  assign second_fallback = s.fallback_second | default: 'asturan-hero-lifestyle.jpg'
+  assign layout = s.layout | default: 'right'
+  assign position = index | plus: 1
+  if index == 0
+    assign heading_tag = 'h1'
+    assign loading = 'eager'
+  else
+    assign heading_tag = 'h2'
+    assign loading = 'lazy'
+  endif
+-%}
+
+<div
+  class="asturan-ed__panel asturan-ed__panel--{{ layout }}{% if index == 0 %} is-active{% endif %}"
+  role="group"
+  aria-roledescription="slide"
+  aria-label="{{ position }} / {{ count }}"
+  data-ed-panel
+  {% if index != 0 %}
+    aria-hidden="true" inert
+  {% endif %}
+  style="--pos: {{ index }};"
+  {{ attributes }}
+>
+  <div class="asturan-ed__inner">
+    <div class="asturan-ed__text asturan-ed__layer" style="--depth: 0.35;">
+      {%- if s.label != blank -%}
+        <p class="asturan-ed__label" style="--d: 0.05s;">{{ s.label | escape }}</p>
+      {%- endif -%}
+      <{{ heading_tag }} id="{{ id }}" class="asturan-ed__heading">
+        <span class="asturan-ed__line" style="--d: 0.15s;">{{ s.heading_1 | escape }}</span>
+        {%- if s.heading_2 != blank -%}
+          <span class="asturan-ed__line asturan-ed__line--accent" style="--d: 0.3s;">
+            {{- s.heading_2 | escape -}}
+          </span>
+        {%- endif -%}
+      </{{ heading_tag }}>
+      {%- if s.text != blank -%}
+        <p class="asturan-ed__copy" style="--d: 0.45s;">{{ s.text | escape }}</p>
+      {%- endif -%}
+      <div class="asturan-ed__links" style="--d: 0.55s;">
+        {%- if s.link_1_label != blank -%}
+          <a class="asturan-ed__link" href="{{ link_1_url }}">
+            <span>{{ s.link_1_label | escape }}</span>
+            <svg aria-hidden="true" focusable="false" width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M0 6h32M27 1l5 5-5 5"/></svg>
+          </a>
+        {%- endif -%}
+        {%- if s.link_2_label != blank -%}
+          <a class="asturan-ed__link" href="{{ link_2_url }}">
+            <span>{{ s.link_2_label | escape }}</span>
+            <svg aria-hidden="true" focusable="false" width="34" height="12" viewBox="0 0 34 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M0 6h32M27 1l5 5-5 5"/></svg>
+          </a>
+        {%- endif -%}
+      </div>
+    </div>
+
+    <div class="asturan-ed__media">
+      {%- if s.show_shapes != false -%}
+        <span class="asturan-ed__shape asturan-ed__shape--circle asturan-ed__layer" style="--depth: 0.9;" aria-hidden="true"></span>
+        <span class="asturan-ed__shape asturan-ed__shape--arch asturan-ed__layer" style="--depth: 0.55;" aria-hidden="true"></span>
+      {%- endif -%}
+
+      <div class="asturan-ed__layer asturan-ed__layer--main" style="--depth: 0.15;">
+        <a class="asturan-ed__photo asturan-ed__photo--main" href="{{ link_1_url }}" tabindex="-1" aria-hidden="true" style="--d: 0.2s;">
+          {%- if s.image_main != blank -%}
+            {%- if index == 0 -%}
+              {{ s.image_main | image_url: width: 1400 | image_tag: widths: '480, 700, 900, 1100, 1400', sizes: '(min-width: 990px) 34vw, 72vw', loading: 'eager', fetchpriority: 'high', alt: '' }}
+            {%- else -%}
+              {{ s.image_main | image_url: width: 1400 | image_tag: widths: '480, 700, 900, 1100, 1400', sizes: '(min-width: 990px) 34vw, 72vw', loading: 'lazy', alt: '' }}
+            {%- endif -%}
+          {%- else -%}
+            <img
+              src="{{ main_fallback | asset_url }}"
+              alt=""
+              width="700"
+              height="1050"
+              loading="{{ loading }}"
+              {% if index == 0 %}
+                fetchpriority="high"
+              {% endif %}
+            >
+          {%- endif -%}
+        </a>
+      </div>
+
+      <div class="asturan-ed__layer asturan-ed__layer--second" style="--depth: 0.7;">
+        <a class="asturan-ed__photo asturan-ed__photo--second" href="{{ link_2_url }}" tabindex="-1" aria-hidden="true" style="--d: 0.45s;">
+          {%- if s.image_second != blank -%}
+            {{ s.image_second | image_url: width: 900 | image_tag: widths: '320, 480, 700, 900', sizes: '(min-width: 990px) 20vw, 46vw', loading: loading, alt: '' }}
+          {%- else -%}
+            <img src="{{ second_fallback | asset_url }}" alt="" width="600" height="800" loading="{{ loading }}">
+          {%- endif -%}
+        </a>
+      </div>
+
+      {%- if s.caption != blank -%}
+        <p class="asturan-ed__caption" style="--d: 0.65s;">{{ s.caption | escape }}</p>
+      {%- endif -%}
+    </div>
+  </div>
+</div>

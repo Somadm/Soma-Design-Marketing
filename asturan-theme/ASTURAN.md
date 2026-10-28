@@ -153,3 +153,16 @@ template, switched off ("Asturan hero" → show section to restore it).
 3. **Free hijab:** the code is the only thing customers need. To fulfil, filter Orders by discount code
    `WELCOME10` and pack a hijab; optionally a free Shopify Flow workflow can tag those orders
    `welcome-gift` automatically.
+
+## Sliding editorial hero (v8)
+
+The editorial hero now slides like an editorial lookbook: four Panel blocks glide sideways every 5 seconds
+with a layered parallax movement (text, photos and soft shapes travel at slightly different speeds), and
+after the last panel it rewinds to the first. Panels: *Modest style. / Beautifully yours.* (hijabs and
+abayas), *Light as air. / Made to drape.* (hijab edit), *Metallic satin. / Made to be seen.* (open
+abayas), *Pray in comfort. / Dressed in grace.* (prayer sets). Photos alternate left and right.
+
+Controls: 01 ─ 04 progress, previous and next arrows, pause/play, swipe on phones, arrow keys. Keyboard
+focus holds the current panel; reduced-motion visitors get no gliding and no automatic sliding. Each
+panel's text, links, layout and photos are editable (Customize → Asturan editorial hero → Panel); the
+included Asturan photos are used until others are chosen. Timing: Customize → Sliding.
