@@ -42,7 +42,8 @@
         "edit_button_1_url": "shopify://collections/hijabs",
         "edit_button_2_label": "Print Hijabs",
         "edit_button_2_url": "shopify://collections/print-hijabs"
-      }
+      },
+      "disabled": true
     },
     "categories": {
       "type": "asturan-category-tiles",
@@ -242,9 +243,27 @@
         "text": "<p>Hijabs and simple abayas for the daily wardrobe: clean, soft and easy to wear.</p>",
         "button_label": "Shop hijabs"
       }
+    },
+    "editorial_hero": {
+      "type": "asturan-editorial-hero",
+      "settings": {
+        "label": "ASTURAN MODEST",
+        "heading_1": "Modest style.",
+        "heading_2": "Beautifully yours.",
+        "text": "Discover hijabs and abayas for everyday elegance.",
+        "link_1_label": "SHOP HIJABS",
+        "link_1_collection": "hijabs",
+        "link_2_label": "SHOP ABAYAS",
+        "link_2_collection": "abayas",
+        "caption": "New season · Abayas & hijabs",
+        "background": "white",
+        "show_shapes": true,
+        "animate": true
+      }
     }
   },
   "order": [
+    "editorial_hero",
     "hero",
     "categories",
     "brand_intro",

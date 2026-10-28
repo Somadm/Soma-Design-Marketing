@@ -116,3 +116,40 @@ These are store data, not theme code, so they can't be done from this repository
 10. **Fonts:** brand fonts load from Google Fonts. To use Shopify-hosted fonts instead, untick
     "Use brand fonts" and pick Cormorant Garamond and Jost under Typography (if they're in
     Shopify's font library).
+
+## Editorial hero (v7)
+
+`sections/asturan-editorial-hero.liquid` is now the first homepage section: light background, oversized
+serif headline ("Modest style. / *Beautifully yours.*"), small label and text, arrow-style links
+(SHOP HIJABS → `hijabs`, SHOP ABAYAS → `abayas`), a large model portrait overlapping a smaller lifestyle
+photo, soft blush and gold shapes, and a CSS-only entrance animation that is off for reduced-motion
+visitors. Text, links and both photos are editable (Customize → Asturan editorial hero); the included
+Asturan photos are used until others are chosen. The previous banner slideshow is still in the homepage
+template, switched off ("Asturan hero" → show section to restore it).
+
+## Welcome pop-up (v7)
+
+`sections/asturan-popup.liquid` (footer group, so it can appear on every page).
+
+- **Sign-up:** Shopify's own customer form. Each sign-up is saved in Shopify admin → Customers with email
+  marketing consent and the tags `newsletter` and `welcome-offer`. Works with Shopify's spam protection.
+- **When it shows:** after 8 seconds, not on cart/checkout/account pages, not to signed-in customers who
+  already subscribe or have ordered. Closing it hides it for 7 days; after signing up it never shows again
+  on that browser. All adjustable in the section settings.
+- **States:** inline email validation, "Sending…" while submitting, server errors shown in the pop-up,
+  success screen with the code, a copy button, and a "Start shopping" button that applies the code
+  through `/discount/WELCOME10` so it is already in place at checkout.
+- **Accessibility:** native modal dialog with labelled heading and text, focus moves into the pop-up and
+  returns afterwards, Escape and the 44px close button close it, consent text links to the privacy policy.
+
+### Store setup still needed (Shopify admin)
+
+1. **Create the code** (Discounts → Create discount → Amount off order):
+   code `WELCOME10`, 10%, no minimum, *Eligibility*: specific customer segment
+   `customer_tags CONTAINS 'welcome-offer' AND number_of_orders = 0`, *Maximum discount uses*: limit to
+   one use per customer, no end date. The code name must match the pop-up setting "Welcome discount code".
+2. **Welcome email:** Shopify Email → Automations → *Welcome new subscribers* → add the code and the free
+   hijab note → turn on. (If another email platform is used, set up the same welcome email there.)
+3. **Free hijab:** the code is the only thing customers need. To fulfil, filter Orders by discount code
+   `WELCOME10` and pack a hijab; optionally a free Shopify Flow workflow can tag those orders
+   `welcome-gift` automatically.

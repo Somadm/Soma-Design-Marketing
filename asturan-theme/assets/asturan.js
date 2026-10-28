@@ -342,3 +342,178 @@ document.addEventListener('mouseover', (event) => {
     if (!item.hasAttribute('data-open')) toggle?.setAttribute('aria-expanded', String(item === dropdown));
   });
 });
+
+/* ---------- Welcome pop-up ---------- */
+
+const POPUP_KEYS = {
+  dismissed: 'asturan:popup-dismissed-at',
+  subscribed: 'asturan:popup-subscribed',
+  submitted: 'asturan:popup-submitted',
+};
+
+const safeStorage = (store) => ({
+  get(key) {
+    try {
+      return store.getItem(key);
+    } catch (error) {
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      store.setItem(key, value);
+    } catch (error) {
+      /* storage blocked: the pop-up still works, it just may show again */
+    }
+  },
+  remove(key) {
+    try {
+      store.removeItem(key);
+    } catch (error) {
+      /* ignore */
+    }
+  },
+});
+
+class AsturanPopupRoot extends HTMLElement {
+  connectedCallback() {
+    this.dialog = this.querySelector('dialog');
+    this.form = this.closest('form');
+    this.local = safeStorage(window.localStorage);
+    this.session = safeStorage(window.sessionStorage);
+    if (!this.dialog) return;
+
+    this.dialog.addEventListener('close', () => this.onClose());
+    this.dialog.addEventListener('click', (event) => {
+      // A click on the backdrop (the dialog element itself, outside its content) closes it.
+      if (event.target === this.dialog) this.dialog.close();
+    });
+    this.querySelectorAll('[data-asturan-popup-close]').forEach((button) =>
+      button.addEventListener('click', () => this.dialog.close()),
+    );
+    this.form?.addEventListener('submit', (event) => this.onSubmit(event));
+    // Replace the browser's own validation bubble with the pop-up's message.
+    const emailInput = this.dialog.querySelector('input[type="email"]');
+    emailInput?.addEventListener('invalid', (event) => {
+      event.preventDefault();
+      this.showInvalid(emailInput);
+    });
+    emailInput?.addEventListener('input', () => {
+      if (emailInput.getAttribute('aria-invalid') === 'true' && emailInput.checkValidity())
+        this.clearInvalid(emailInput);
+    });
+    this.querySelector('[data-asturan-copy]')?.addEventListener('click', (event) => this.copyCode(event));
+
+    const state = this.dataset.state;
+    const submittedHere = this.session.get(POPUP_KEYS.submitted) === '1';
+
+    // After this pop-up's own form was sent, the page reloads: reopen to show success or the error.
+    if (state !== 'form' && submittedHere) {
+      this.session.remove(POPUP_KEYS.submitted);
+      if (state === 'success') this.local.set(POPUP_KEYS.subscribed, '1');
+      this.open();
+      return;
+    }
+
+    if (this.hasAttribute('data-design-mode')) {
+      document.addEventListener('shopify:section:select', (event) => {
+        if (this.closest('.shopify-section')?.id === `shopify-section-${event.detail.sectionId}`) this.open();
+      });
+      document.addEventListener('shopify:section:deselect', () => this.dialog.open && this.dialog.close());
+      return;
+    }
+
+    if (this.isEligible()) {
+      const delay = Math.max(0, Number(this.dataset.delay) || 8) * 1000;
+      this.timer = window.setTimeout(() => {
+        if (!document.querySelector('dialog[open]')) this.open();
+      }, delay);
+    }
+  }
+
+  isEligible() {
+    if (this.dataset.eligible !== 'true') return false;
+    if (this.local.get(POPUP_KEYS.subscribed) === '1') return false;
+    if (/\/(cart|checkout|account|challenge)/.test(window.location.pathname)) return false;
+    const dismissedAt = Number(this.local.get(POPUP_KEYS.dismissed)) || 0;
+    const days = Number(this.dataset.dismissDays) || 7;
+    return Date.now() - dismissedAt > days * 24 * 60 * 60 * 1000;
+  }
+
+  open() {
+    if (this.dialog.open) return;
+    this.previousFocus = document.activeElement;
+    this.dialog.showModal();
+    document.documentElement.classList.add('asturan-popup-open');
+    const target =
+      this.dialog.querySelector('[aria-invalid="true"]') ||
+      this.dialog.querySelector('input[type="email"]') ||
+      this.dialog.querySelector('[data-asturan-popup-success] .asturan-popup__title');
+    if (target instanceof HTMLElement) {
+      if (!target.matches('input')) target.setAttribute('tabindex', '-1');
+      target.focus();
+    }
+  }
+
+  onClose() {
+    document.documentElement.classList.remove('asturan-popup-open');
+    if (this.dataset.state === 'success') {
+      this.local.set(POPUP_KEYS.subscribed, '1');
+    } else if (!this.hasAttribute('data-design-mode')) {
+      this.local.set(POPUP_KEYS.dismissed, String(Date.now()));
+    }
+    if (this.previousFocus instanceof HTMLElement) this.previousFocus.focus();
+  }
+
+  onSubmit(event) {
+    const input = this.dialog.querySelector('input[type="email"]');
+    const button = this.dialog.querySelector('[data-asturan-popup-submit]');
+    if (!(input instanceof HTMLInputElement)) return;
+
+    input.value = input.value.trim();
+    const valid = input.checkValidity() && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(input.value);
+    if (!valid) {
+      event.preventDefault();
+      this.showInvalid(input);
+      return;
+    }
+
+    this.clearInvalid(input);
+    this.session.set(POPUP_KEYS.submitted, '1');
+    if (button instanceof HTMLButtonElement) {
+      button.setAttribute('aria-busy', 'true');
+      button.textContent = button.dataset.loading || button.textContent;
+      // Disable after the browser has captured the form data so the submission still goes through.
+      window.setTimeout(() => (button.disabled = true), 0);
+    }
+  }
+
+  showInvalid(input) {
+    const error = this.dialog.querySelector('[data-asturan-popup-error]');
+    input.setAttribute('aria-invalid', 'true');
+    if (error) error.textContent = input.dataset.invalidMessage || '';
+    input.focus();
+  }
+
+  clearInvalid(input) {
+    const error = this.dialog.querySelector('[data-asturan-popup-error]');
+    input.removeAttribute('aria-invalid');
+    if (error) error.textContent = '';
+  }
+
+  async copyCode(event) {
+    const button = /** @type {HTMLButtonElement} */ (event.currentTarget);
+    const code = this.dialog.querySelector('[data-asturan-code]')?.textContent?.trim();
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      const original = button.textContent;
+      button.textContent = button.dataset.copied || original;
+      window.setTimeout(() => (button.textContent = original), 2000);
+    } catch (error) {
+      /* Clipboard blocked: the code stays visible to copy by hand. */
+    }
+  }
+}
+
+if (!customElements.get('asturan-popup-root')) customElements.define('asturan-popup-root', AsturanPopupRoot);

@@ -1,0 +1,252 @@
+{%- comment -%}
+  Asturan welcome pop-up: email sign-up with the welcome offer (10% off the first order plus a free hijab
+  with that order). Text and form on the left, a large Asturan photo on the right; compact on mobile.
+
+  Sign-ups use Shopify's own customer form, so each subscriber is saved in Shopify Customers with email
+  marketing consent and the tags "newsletter" and "welcome-offer". The form posts normally (it also works
+  with Shopify's spam protection); after the page reloads the pop-up reopens to show the success state or
+  the error. Shown after a delay to eligible visitors only: not to signed-in customers who already
+  subscribe or have ordered, not again for the chosen number of days after it is closed, and never again
+  after a successful sign-up on this browser.
+{%- endcomment -%}
+
+{%- liquid
+  assign show_for_customer = true
+  if customer and customer.accepts_marketing
+    assign show_for_customer = false
+  endif
+  if customer and customer.orders_count > 0
+    assign show_for_customer = false
+  endif
+  assign popup_image = section.settings.image
+  assign privacy_url = shop.privacy_policy.url | default: section.settings.privacy_url
+  assign code = section.settings.discount_code | strip
+  assign shop_url = section.settings.shop_url | default: routes.all_products_collection_url
+-%}
+
+{%- if section.settings.enabled -%}
+  {%- form 'customer', id: 'AsturanPopupForm', class: 'asturan-popup__form-wrap' -%}
+    {%- liquid
+      assign state = 'form'
+      if form.posted_successfully?
+        assign state = 'success'
+      elsif form.errors
+        assign state = 'error'
+      endif
+    -%}
+    <asturan-popup-root
+      class="asturan-popup-root"
+      data-delay="{{ section.settings.delay_seconds }}"
+      data-dismiss-days="{{ section.settings.dismiss_days }}"
+      data-eligible="{{ show_for_customer }}"
+      data-state="{{ state }}"
+      {% if request.design_mode %}
+        data-design-mode
+      {% endif %}
+    >
+      <dialog
+        class="asturan-popup"
+        aria-labelledby="AsturanPopupTitle"
+        aria-describedby="AsturanPopupText"
+        data-asturan-popup
+      >
+        <button type="button" class="asturan-popup__close" data-asturan-popup-close aria-label="{{ 'actions.close' | t }}">
+          <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="m2 2 12 12M14 2 2 14"/></svg>
+        </button>
+
+        <div class="asturan-popup__body">
+          {%- if state == 'success' -%}
+            <div class="asturan-popup__panel" data-asturan-popup-success>
+              {%- if section.settings.eyebrow != blank -%}
+                <p class="asturan-eyebrow">{{ section.settings.eyebrow | escape }}</p>
+              {%- endif -%}
+              <h2 id="AsturanPopupTitle" class="asturan-popup__title">{{ section.settings.success_heading | escape }}</h2>
+              <p id="AsturanPopupText" class="asturan-popup__text">
+                {%- if code != blank -%}
+                  {{ section.settings.success_text_code | escape }}
+                {%- else -%}
+                  {{ section.settings.success_text_email | escape }}
+                {%- endif -%}
+              </p>
+              {%- if code != blank -%}
+                <div class="asturan-popup__code" role="group" aria-label="{{ section.settings.code_label | escape }}">
+                  <span class="asturan-popup__code-label">{{ section.settings.code_label | escape }}</span>
+                  <span class="asturan-popup__code-value" data-asturan-code>{{ code | escape }}</span>
+                  <button type="button" class="asturan-popup__copy" data-asturan-copy data-copied="{{ section.settings.copied_label | escape }}">
+                    {{- section.settings.copy_label | escape -}}
+                  </button>
+                </div>
+              {%- endif -%}
+              <p class="asturan-popup__gift">{{ section.settings.success_gift | escape }}</p>
+              <a
+                class="asturan-btn asturan-btn--primary asturan-popup__submit"
+                href="{% if code != blank %}{{ routes.root_url | append: '/discount/' | replace: '//', '/' }}{{ code | url_encode }}?redirect={{ shop_url | url_encode }}{% else %}{{ shop_url }}{% endif %}"
+              >
+                {{- section.settings.success_button | escape -}}
+              </a>
+              <p class="asturan-popup__status visually-hidden" role="status">{{ section.settings.success_heading | escape }}</p>
+            </div>
+          {%- else -%}
+            <div class="asturan-popup__panel">
+              {%- if section.settings.eyebrow != blank -%}
+                <p class="asturan-eyebrow">{{ section.settings.eyebrow | escape }}</p>
+              {%- endif -%}
+              <h2 id="AsturanPopupTitle" class="asturan-popup__title">{{ section.settings.heading | escape }}</h2>
+              <p id="AsturanPopupText" class="asturan-popup__text">{{ section.settings.text | escape }}</p>
+
+              <input type="hidden" name="contact[tags]" value="newsletter,welcome-offer">
+              <input type="hidden" name="contact[accepts_marketing]" value="true">
+              <div class="asturan-popup__field">
+                <label for="AsturanPopupEmail" class="asturan-popup__label">{{ section.settings.email_label | escape }}</label>
+                <input
+                  id="AsturanPopupEmail"
+                  class="asturan-popup__input"
+                  type="email"
+                  name="contact[email]"
+                  autocomplete="email"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  placeholder="{{ section.settings.email_label | escape }}"
+                  required
+                  aria-describedby="AsturanPopupConsent{% if state == 'error' %} AsturanPopupError{% endif %}"
+                  {% if state == 'error' %}
+                    aria-invalid="true"
+                  {% endif %}
+                  data-invalid-message="{{ section.settings.invalid_message | escape }}"
+                >
+                <p id="AsturanPopupError" class="asturan-popup__error" role="alert" data-asturan-popup-error>
+                  {%- if state == 'error' -%}
+                    {%- if form.errors.messages.email -%}
+                      {{ form.errors.translated_fields.email | capitalize }} {{ form.errors.messages.email }}
+                    {%- else -%}
+                      {{ section.settings.error_message | escape }}
+                    {%- endif -%}
+                  {%- endif -%}
+                </p>
+              </div>
+              <button type="submit" class="asturan-btn asturan-btn--primary asturan-popup__submit" data-asturan-popup-submit data-loading="{{ section.settings.loading_label | escape }}">
+                {{- section.settings.button | escape -}}
+              </button>
+              <p id="AsturanPopupConsent" class="asturan-popup__consent">
+                {{ section.settings.consent | escape }}
+                {%- if privacy_url != blank %}
+                  <a href="{{ privacy_url }}">{{ section.settings.privacy_label | escape }}</a>.
+                {%- endif -%}
+              </p>
+              <p class="asturan-popup__small">{{ section.settings.small_print | escape }}</p>
+            </div>
+          {%- endif -%}
+        </div>
+
+        <div class="asturan-popup__media" aria-hidden="true">
+          {%- if popup_image != blank -%}
+            {{ popup_image | image_url: width: 900 | image_tag: widths: '450, 700, 900', sizes: '(min-width: 750px) 380px, 100vw', loading: 'lazy', alt: '' }}
+          {%- else -%}
+            <img src="{{ 'asturan-popup.jpg' | asset_url }}" alt="" width="781" height="977" loading="lazy">
+          {%- endif -%}
+        </div>
+      </dialog>
+    </asturan-popup-root>
+  {%- endform -%}
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Asturan welcome pop-up",
+  "class": "asturan-popup-section",
+  "enabled_on": {
+    "groups": ["footer"]
+  },
+  "settings": [
+    { "type": "checkbox", "id": "enabled", "label": "Show the welcome pop-up", "default": true },
+    {
+      "type": "range",
+      "id": "delay_seconds",
+      "label": "Show after",
+      "min": 2,
+      "max": 30,
+      "step": 1,
+      "unit": "s",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "dismiss_days",
+      "label": "After closing, wait before showing again",
+      "min": 1,
+      "max": 30,
+      "step": 1,
+      "unit": "d",
+      "default": 7
+    },
+    { "type": "header", "content": "Offer" },
+    {
+      "type": "text",
+      "id": "discount_code",
+      "label": "Welcome discount code",
+      "info": "Create this code in Shopify admin → Discounts first (10% off, one use per customer). It is shown after sign-up and applied when they click the button."
+    },
+    { "type": "url", "id": "shop_url", "label": "Where the success button leads" },
+    { "type": "header", "content": "Text" },
+    { "type": "text", "id": "eyebrow", "label": "Small heading", "default": "Welcome to Asturan" },
+    { "type": "text", "id": "heading", "label": "Headline", "default": "Your first order comes with a gift." },
+    {
+      "type": "textarea",
+      "id": "text",
+      "label": "Supporting text",
+      "default": "Join the Asturan mailing list and enjoy 10% off your first order, plus a free hijab with your purchase."
+    },
+    { "type": "text", "id": "email_label", "label": "Email field", "default": "Your email address" },
+    { "type": "text", "id": "button", "label": "Button", "default": "GET MY WELCOME OFFER" },
+    { "type": "text", "id": "loading_label", "label": "Button while sending", "default": "SENDING…" },
+    {
+      "type": "textarea",
+      "id": "consent",
+      "label": "Consent text",
+      "default": "By signing up, you agree to receive marketing emails from Asturan Modest Wear. You can unsubscribe at any time. See our"
+    },
+    { "type": "text", "id": "privacy_label", "label": "Privacy link text", "default": "Privacy Policy" },
+    { "type": "url", "id": "privacy_url", "label": "Privacy page", "info": "Used only if the store has no privacy policy set in Settings → Policies." },
+    {
+      "type": "textarea",
+      "id": "small_print",
+      "label": "Small print",
+      "default": "For new email subscribers on their first order. Your free hijab ships with your purchase."
+    },
+    { "type": "text", "id": "invalid_message", "label": "Invalid email message", "default": "Please enter a valid email address." },
+    { "type": "text", "id": "error_message", "label": "General error message", "default": "Something went wrong. Please try again." },
+    { "type": "header", "content": "After signing up" },
+    { "type": "text", "id": "success_heading", "label": "Success headline", "default": "Welcome to Asturan." },
+    {
+      "type": "textarea",
+      "id": "success_text_code",
+      "label": "Success text (with a code)",
+      "default": "Here is your 10% welcome code. Use it on your first order. We have also sent it to your inbox."
+    },
+    {
+      "type": "textarea",
+      "id": "success_text_email",
+      "label": "Success text (without a code)",
+      "default": "Your 10% welcome code is on its way to your inbox. Use it on your first order."
+    },
+    { "type": "text", "id": "code_label", "label": "Code label", "default": "Your code" },
+    { "type": "text", "id": "copy_label", "label": "Copy button", "default": "COPY" },
+    { "type": "text", "id": "copied_label", "label": "Copied message", "default": "COPIED" },
+    {
+      "type": "textarea",
+      "id": "success_gift",
+      "label": "Free hijab note",
+      "default": "Your free hijab is included with your first order. You only need your 10% code at checkout."
+    },
+    { "type": "text", "id": "success_button", "label": "Success button", "default": "START SHOPPING" },
+    { "type": "header", "content": "Photo" },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Photo",
+      "info": "Tall portrait of an Asturan model. Leave empty to use the included Asturan photo."
+    }
+  ],
+  "presets": [{ "name": "Asturan welcome pop-up" }]
+}
+{% endschema %}

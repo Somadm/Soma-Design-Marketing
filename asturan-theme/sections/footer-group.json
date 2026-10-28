@@ -33,9 +33,19 @@
         "copyright": "© [year] Asturan Modest. All Rights Reserved.",
         "show_payment_icons": false
       }
+    },
+    "asturan_popup": {
+      "type": "asturan-popup",
+      "settings": {
+        "enabled": true,
+        "delay_seconds": 8,
+        "dismiss_days": 7,
+        "discount_code": "WELCOME10"
+      }
     }
   },
   "order": [
-    "asturan_footer"
+    "asturan_footer",
+    "asturan_popup"
   ]
 }
